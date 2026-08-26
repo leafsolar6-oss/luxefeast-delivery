@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 class LuxTheme {
   static const Color gold = Color(0xFFD4AF37);
+  static const Color naijaGreen = Color(0xFF008751);
+  static const Color naijaWhite = Color(0xFFFFFFFF);
   static const Color goldLight = Color(0xFFE8C874);
   static const Color deepBlack = Color(0xFF0A0A0F);
   static const Color surface = Color(0xFF12121A);

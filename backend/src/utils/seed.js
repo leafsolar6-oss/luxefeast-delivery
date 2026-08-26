@@ -13,11 +13,11 @@ const seedData = async () => {
 
     // Create demo shop
     const shop = await Shop.create({
-      name: 'Golden Crust Bistro',
+      name: 'Mama Nkem Amala Palace',
       email: 'shop@goldencrust.com',
       phone: '+2348012345678',
-      address: '12 Victoria Island, Lagos',
-      cuisine: ['Italian', 'Continental'],
+      address: 'Plot 17, Lekki Phase 1, Lagos, Nigeria',
+      cuisine: ['Nigerian', 'Continental', 'Swallow & Soup'],
       rating: 4.8,
       isActive: true,
     });

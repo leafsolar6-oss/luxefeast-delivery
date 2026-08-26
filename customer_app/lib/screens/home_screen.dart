@@ -13,9 +13,9 @@ class CustomerHomeScreen extends StatefulWidget {
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   final List<Map<String, dynamic>> featuredShops = [
-    {'name': 'Golden Crust Bistro', 'cuisine': 'Italian • Continental', 'rating': 4.8, 'image': 'https://images.unsplash.com/photo-1559339352-11d035aa65de?w=600&q=80'},
-    {'name': 'Sakura Zen', 'cuisine': 'Japanese • Fusion', 'rating': 4.6, 'image': 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?w=600&q=80'},
-    {'name': 'Le Maison', 'cuisine': 'French • Fine Dining', 'rating': 4.9, 'image': 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=600&q=80'},
+    {'name': 'Mama Nkem Amala Palace', 'cuisine': 'Amala • Ewedu • Gbegiri • Swallow & Soup', 'rating': 4.9, 'image': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80'},
+    {'name': 'Suya Palace Abuja', 'cuisine': 'Suya • Grilled • Nigerian Street Food', 'rating': 4.7, 'image': 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&q=80'},
+    {'name': 'Jollof Republic Lagos', 'cuisine': 'Jollof Rice • Fried Rice • Nigerian Classic', 'rating': 4.8, 'image': 'https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?w=600&q=80'},
   ];
 
   @override

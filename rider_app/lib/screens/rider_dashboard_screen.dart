@@ -14,7 +14,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   int selectedTab = 0;
 
   final List<Map<String, dynamic>> notifications = [
-    {'title': 'New Order Ready', 'subtitle': 'Golden Crust Bistro — Order #1042', 'time': '2 min ago', 'new': true},
+    {'title': 'New Order Ready', 'subtitle': 'Mama Nkem Amala Palace — Order #1042', 'time': '2 min ago', 'new': true},
     {'title': 'Delivery Confirmed', 'subtitle': 'Amara Okonkwo — Delivered', 'time': '15 min ago', 'new': false},
   ];
 

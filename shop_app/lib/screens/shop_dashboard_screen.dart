@@ -33,7 +33,7 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
     return Scaffold(
       backgroundColor: LuxTheme.deepBlack,
       appBar: AppBar(
-        title: Text('Golden Crust Bistro', style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700)),
+        title: Text('Mama Nkem Amala Palace', style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700)),
         actions: [
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 16),

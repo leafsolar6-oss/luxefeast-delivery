@@ -1,6 +1,6 @@
-# LuxFeast — International Standard Food Delivery Ecosystem
+# LuxFeast — Nigerian Premium Food Delivery Ecosystem
 
-A premium, three-sided food delivery platform built to international quality standards.
+A premium, three-sided food delivery platform built specifically for **Nigeria** — with Nigerian cuisines (Jollof, Amala, Suya, Pounded Yam), Nigerian payment gateways (**Paystack / Flutterwave**), Nigerian currency (**₦ Naira**), Nigerian mobile format (**+234**), and luxury design inspired by Nigerian heritage (**Green • Gold • Black**).
 
 ## Architecture
 
@@ -22,24 +22,26 @@ LuxFeast/
 - **Real-Time Communication**: WebSocket (`socket.io`) with automatic reconnection, ping timeouts (60s), and event-based order tracking.
 - **Security**: `helmet`, `cors`, `bcryptjs` password hashing, `JWT` authentication, environment variable isolation.
 - **Performance**: Flutter `CustomScrollView` with `SliverAppBar`, lazy-loaded grids, image caching via `NetworkImage`. Backend uses `morgan` logging and `mongoose` indexing.
-- **Internationalization (i18n)**: `intl` package integrated; all date/time formats use locale-aware strings; currency symbols are parameterized (`₦` for NGN, `USD`, `EUR`, etc.).
-- **Payment Readiness**: Stripe SDK included in backend; payment history modeled in `Rider` collection; ready for PCI-compliant integration.
+- **Internationalization (i18n / Nigerian Locales)**: `intl` package integrated; Nigerian date/time formats; currency parameterized (`₦` for NGN); ready for Yoruba (`yo`), Igbo (`ig`), and Hausa (`ha`) translations.
+- **Nigerian Payment Readiness**: `Paystack` and `Flutterwave` SDK references; `paymentGateway` field on orders (`paystack`, `flutterwave`, `cash`); rider payment history tracked in `₦`.
 - **Code Quality**: `eslint`, `flutter_lints`, `prettier`-ready formatting, modular architecture (controllers, routes, services, screens, widgets).
 
-## Design System — Luxury Dark Theme
+## Design System — Nigerian Luxury Theme
 
-- **Palette**: Deep Black (`#0A0A0F`), Gold (`#D4AF37`), Surface (`#12121A`), Elevated (`#181825`).
-- **Typography**: `Playfair Display` (display/headlines — luxury editorial feel), `Inter` (UI/body — clean international readability).
-- **Components**: Glassmorphic cards with gold 10% borders, rounded 24px corners, shimmer loading states, linear progress tracking, floating action buttons.
+Inspired by the Nigerian flag and royal heritage: **Deep Black**, **Gold** (`#D4AF37`), and **Nigerian Green** (`#008751`).
+- **Palette**: Deep Black (`#0A0A0F`), Gold (`#D4AF37`), Nigerian Green (`#008751`), Surface (`#12121A`), Elevated (`#181825`).
+- **Typography**: `Playfair Display` (editorial luxury — fits Nigerian premium culture), `Inter` (clean, modern readability).
+- **Cuisines**: Amala • Ewedu • Gbegiri, Jollof Rice, Suya, Pounded Yam, Swallow & Soup, Nigerian Street Food, Continental.
 
 ## Running the System
 
-### 1. Backend
+### 1. Backend (Nigerian Setup)
 ```bash
 cd backend
 npm install
 npm run dev
 ```
+The backend uses Nigerian `₦` currency, `Paystack` / `Flutterwave` payment gateways, `+234` mobile formats, and Nigerian cuisines in seed data (`Mama Nkem Amala Palace`, `Jollof Republic Lagos`, `Suya Palace Abuja`).
 
 ### 2. Customer App
 ```bash
