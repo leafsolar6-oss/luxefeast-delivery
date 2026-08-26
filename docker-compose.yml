@@ -1,0 +1,28 @@
+version: '3.9'
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://mongo:27017/luxefeast
+    depends_on:
+      - mongo
+    networks:
+      - luxefeast
+
+  mongo:
+    image: mongo:7
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - luxefeast
+
+networks:
+  luxefeast:
+
+volumes:
+  mongo_data:

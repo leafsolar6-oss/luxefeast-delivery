@@ -1,0 +1,28 @@
+# Git & Build artifacts
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Node
+node_modules/
+npm-debug.log
+
+# Flutter / Dart
+.dart_tool/
+.build/
+packages/
+pubspec.lock
+
+# iOS / Android build outputs
+build/
+/ios/Flutter/App.framework
+/android/app/build
+
+# Environment variables
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
