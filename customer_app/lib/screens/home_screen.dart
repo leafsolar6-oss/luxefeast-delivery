@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../services/session.dart';
 import '../services/cart_service.dart';
+import '../services/push_service.dart';
 import 'cart_sheet.dart';
 import 'auth_screen.dart';
 import 'menu_sheet.dart';
@@ -51,6 +52,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       if (Session.isLoggedIn) {
         SocketService.connect(customerId: Session.userId);
         SocketService.attachOrderNotifications();
+        PushService.init();
         setState(() {});
       }
       return;
@@ -77,6 +79,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       ),
     );
     if (logout == true) {
+      await PushService.unregister();
       await Session.clear();
       SocketService.disconnect();
       setState(() {});

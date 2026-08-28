@@ -5,6 +5,7 @@ import 'screens/home_screen.dart';
 import 'services/session.dart';
 import 'services/auth_api.dart';
 import 'services/cart_service.dart';
+import 'services/push_service.dart';
 
 void main() {
   runApp(const LuxFeastApp());
@@ -55,6 +56,7 @@ class _AppGateState extends State<AppGate> {
       final fresh = await AuthApi.me(Session.token!);
       if (fresh != null) {
         await Session.save(Session.token!, fresh);
+        await PushService.init();
       } else {
         await Session.clear(); // stale token → continue as guest
       }

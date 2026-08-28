@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session.dart';
+import '../services/push_service.dart';
 import '../services/popup_notifier.dart';
 import '../main.dart';
 import '../services/socket_service.dart';
@@ -233,6 +234,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.logout_rounded, color: LuxTheme.textSecondary),
             onPressed: () async {
+              await PushService.unregister();
               await Session.clear();
               if (context.mounted) {
                 Navigator.of(context).pushAndRemoveUntil(

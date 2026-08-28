@@ -113,3 +113,14 @@ CREATE TABLE IF NOT EXISTS menu_items (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_menu_shop ON menu_items (shop_id, is_available, sort_order);
+
+-- v3.4 — device push tokens (FCM) for real notifications.
+CREATE TABLE IF NOT EXISTS device_tokens (
+  id            BIGSERIAL PRIMARY KEY,
+  user_id       BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token         TEXT NOT NULL UNIQUE,
+  platform      TEXT NOT NULL DEFAULT 'android',
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_device_tokens_user ON device_tokens (user_id);

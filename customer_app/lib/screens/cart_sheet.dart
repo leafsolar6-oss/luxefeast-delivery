@@ -5,6 +5,7 @@ import '../services/api_service.dart';
 import '../services/cart_service.dart';
 import '../services/session.dart';
 import '../services/socket_service.dart';
+import '../services/push_service.dart';
 import 'auth_screen.dart';
 import 'order_tracking_screen.dart';
 
@@ -50,6 +51,7 @@ class _CartSheetState extends State<CartSheet> {
       // Now we have a session — live order events need the real customer room.
       SocketService.connect(customerId: Session.userId);
       SocketService.attachOrderNotifications();
+      PushService.init();
     }
 
     setState(() => placing = true);

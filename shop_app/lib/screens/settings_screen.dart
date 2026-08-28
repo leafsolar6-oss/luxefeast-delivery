@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session.dart';
+import '../services/push_service.dart';
 import '../main.dart';
 import '../widgets/shop_widgets.dart';
 
@@ -254,6 +255,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: () async {
+                  await PushService.unregister();
                   await Session.clear();
                   if (context.mounted) {
                     Navigator.of(context).pushAndRemoveUntil(

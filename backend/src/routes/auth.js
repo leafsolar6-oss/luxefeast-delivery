@@ -171,4 +171,44 @@ router.get('/me', async (req, res) => {
   } catch (e) { res.status(401).json({ message: 'Invalid or expired token' }); }
 });
 
+// --------------------------------------------------- device push tokens ---
+
+function authUser(req) {
+  const token = (req.headers.authorization || '').replace('Bearer ', '');
+  return jwt.verify(token, JWT_SECRET); // throws on invalid
+}
+
+/** POST /api/auth/device-token  { token, platform } — register for pushes */
+router.post('/device-token', async (req, res) => {
+  try {
+    const payload = authUser(req);
+    const { token, platform = 'android' } = req.body;
+    if (!token) return res.status(400).json({ message: 'token is required' });
+    await query(
+      `INSERT INTO device_tokens (user_id, token, platform)
+       VALUES ($1, $2, $3)
+       ON CONFLICT (token) DO UPDATE SET user_id = EXCLUDED.user_id, last_seen_at = now()`,
+      [payload.id, token, platform]
+    );
+    res.status(201).json({ message: 'Device registered for push notifications' });
+  } catch (e) {
+    const code = e.name === 'JsonWebTokenError' ? 401 : 500;
+    res.status(code).json({ message: code === 401 ? 'Invalid or expired token' : e.message });
+  }
+});
+
+/** DELETE /api/auth/device-token  { token } — stop pushes (logout) */
+router.delete('/device-token', async (req, res) => {
+  try {
+    const payload = authUser(req);
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'token is required' });
+    await query(`DELETE FROM device_tokens WHERE token = $1 AND user_id = $2`, [token, payload.id]);
+    res.json({ message: 'Device unregistered' });
+  } catch (e) {
+    const code = e.name === 'JsonWebTokenError' ? 401 : 500;
+    res.status(code).json({ message: code === 401 ? 'Invalid or expired token' : e.message });
+  }
+});
+
 module.exports = router;

@@ -13,6 +13,11 @@ dependencies:
   google_fonts: ^6.2.1
   http: ^1.2.2
   socket_io_client: ^3.1.6
+
+  # Firebase push notifications (FCM)
+  firebase_core: ^3.6.0
+  firebase_messaging: ^15.1.0
+  flutter_local_notifications: ^17.2.1
   provider: ^6.1.2
   shared_preferences: ^2.3.1
   flutter_svg: ^2.0.10+1

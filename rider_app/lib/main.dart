@@ -5,6 +5,7 @@ import 'screens/rider_dashboard_screen.dart';
 import 'screens/auth_screen.dart';
 import 'services/session.dart';
 import 'services/auth_api.dart';
+import 'services/push_service.dart';
 
 void main() => runApp(const LuxFeastRiderApp());
 
@@ -48,6 +49,7 @@ class _AuthGateState extends State<AuthGate> {
       final fresh = await AuthApi.me(Session.token!);
       if (fresh != null) {
         await Session.save(Session.token!, fresh);
+        PushService.init();
         setState(() { authed = true; checking = false; });
         return;
       }
@@ -68,7 +70,7 @@ class _AuthGateState extends State<AuthGate> {
       return AuthScreen(
         role: 'rider',
         title: 'Rider Partner • Earn in ₦',
-        onAuthed: () => setState(() => authed = true),
+        onAuthed: () { PushService.init(); setState(() => authed = true); },
       );
     }
     return const RiderDashboardScreen();
