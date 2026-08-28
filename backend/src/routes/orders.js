@@ -74,6 +74,13 @@ async function applyTransition(id, transitionName, { note, extraSet = '', extraP
 
 // ---------------------------------------------------------------- queries ---
 
+// Reject non-numeric :id up front (e.g. "/api/orders/null") instead of
+// throwing a Postgres bigint parse error deep in a query.
+router.param('id', (req, res, next, id) => {
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'Invalid order id' });
+  next();
+});
+
 router.get('/', async (req, res) => {
   try {
     const { customerId, shopId, riderId, status, open } = req.query;

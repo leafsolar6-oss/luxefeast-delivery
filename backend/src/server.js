@@ -1,4 +1,8 @@
 require('dotenv').config();
+// Patches Express 4 to forward async route rejections to the error handler
+// below — without this, ANY unhandled async error (e.g. a bad order id like
+// /api/orders/null) crashes the whole process and drops every socket.
+require('express-async-errors');
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -27,9 +31,21 @@ app.get('/api/health', (_req, res) =>
   res.json({ status: 'healthy', version: '2.0.0', service: 'LuxFeast', database: 'postgres (Neon-ready)' })
 );
 
+// JSON error handler — async rejections land here instead of killing the process.
+app.use((err, _req, res, _next) => {
+  console.error('Route error:', err.message);
+  const status = err.code === '22P02' || err.code === '23503' ? 400 : 500; // bad input / FK violation
+  res.status(status).json({ message: status === 400 ? 'Invalid request data' : 'Internal server error' });
+});
+
 const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
   pingTimeout: 60000,
+  // Allow Socket.IO v2 protocol clients (Flutter socket_io_client 2.0.3+1
+  // used by the released APKs) to connect. Without this the apps' sockets
+  // silently fail and no real-time events (order:placed, delivery:offer,
+  // rider:location, …) are ever delivered.
+  allowEIO3: true,
 });
 realtime.init(io);
 
