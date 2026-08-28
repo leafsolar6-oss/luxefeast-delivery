@@ -1,7 +1,7 @@
 name: luxefeast_customer
 description: Premium food delivery app for customers — luxury dark UI with real-time tracking.
 publish_to: 'none'
-version: 4.0.0+4
+version: 4.1.0+5
 
 environment:
   sdk: '>=3.4.0 <4.0.0'

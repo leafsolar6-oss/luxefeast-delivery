@@ -19,6 +19,7 @@ class _EarningsScreenState extends State<EarningsScreen> {
   int get shopId => Session.entityId > 0 ? Session.entityId : 1;
 
   Map<String, dynamic>? stats;
+  List<Map<String, dynamic>>? statsAll;
   List<Map<String, dynamic>> history = [];
   bool loading = true;
   String? error;
@@ -42,11 +43,13 @@ class _EarningsScreenState extends State<EarningsScreen> {
       final results = await Future.wait([
         ApiService.fetchStats(shopId),
         ApiService.fetchOrderHistory(shopId, status: _filter),
+        ApiService.fetchOrderHistory(shopId, status: 'all'),
       ]);
       if (!mounted) return;
       setState(() {
         stats = results[0] as Map<String, dynamic>;
         history = (results[1] as List<dynamic>).cast<Map<String, dynamic>>();
+        statsAll = (results[2] as List<dynamic>).cast<Map<String, dynamic>>();
         loading = false;
         error = null;
       });
@@ -76,6 +79,8 @@ class _EarningsScreenState extends State<EarningsScreen> {
               ErrorCard('Cannot reach Nature Fete servers.\nPull down to retry.')
             else ...[
               _buildRevenueCards(),
+              const SizedBox(height: 16),
+              _buildTrendChart(),
               const SizedBox(height: 16),
               _buildTopItems(),
               const SizedBox(height: 24),
@@ -150,7 +155,97 @@ class _EarningsScreenState extends State<EarningsScreen> {
                 value: '${s['avgActualPrepMinutes']} min',
                 color: LuxTheme.success)),
       ]),
+      const SizedBox(height: 12),
+      Builder(builder: (_) {
+        final all = statsAll ?? const <Map<String, dynamic>>[];
+        final avg = all.isEmpty
+            ? 0.0
+            : all.fold<double>(
+                    0, (sum, o) => sum + (double.tryParse('${o['total']}') ?? 0)) /
+                all.length;
+        return Row(children: [
+          Expanded(
+              child: StatTile(
+                  icon: Icons.receipt_rounded,
+                  label: 'Avg order value',
+                  value: money(avg),
+                  color: LuxTheme.gold)),
+          const SizedBox(width: 12),
+          Expanded(
+              child: StatTile(
+                  icon: Icons.payments_rounded,
+                  label: 'Orders (all-time)',
+                  value: '${s['ordersAllTime']}',
+                  color: LuxTheme.goldLight)),
+        ]);
+      }),
     ]);
+  }
+
+  /// Vendor-Hub-style 7-day order trend (computed from full history).
+  Widget _buildTrendChart() {
+    final all = (statsAll ?? const <Map<String, dynamic>>[]);
+    final now = DateTime.now();
+    final days = List.generate(7, (i) => now.subtract(Duration(days: 6 - i)));
+    final counts = days.map((d) => all
+        .where((o) {
+          final t = DateTime.tryParse('${o['placed_at']}')?.toLocal();
+          return t != null &&
+              t.year == d.year && t.month == d.month && t.day == d.day;
+        }).length).toList();
+    final max = counts.fold<int>(0, (m, c) => c > m ? c : m);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+          color: LuxTheme.surfaceElevated,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: LuxTheme.primary.withOpacity(0.1))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.bar_chart_rounded, color: LuxTheme.primary, size: 18),
+          const SizedBox(width: 8),
+          Text('ORDERS — LAST 7 DAYS',
+              style: GoogleFonts.inter(
+                  fontSize: 12, fontWeight: FontWeight.w800, color: LuxTheme.primary)),
+        ]),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 110,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: List.generate(7, (i) {
+              final c = counts[i];
+              final h = max == 0 ? 6.0 : (c / max) * 84;
+              const dayNames = ['M','T','W','T','F','S','S'];
+              return Expanded(
+                child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+                  if (c > 0)
+                    Text('$c',
+                                        style: GoogleFonts.inter(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: LuxTheme.textSecondary)),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: 18,
+                    height: h,
+                    decoration: BoxDecoration(
+                      color: i == 6 ? LuxTheme.primary : LuxTheme.primary.withOpacity(0.25),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(dayNames[i],
+                      style: GoogleFonts.inter(
+                          fontSize: 10, color: LuxTheme.textSecondary)),
+                ]),
+              );
+            }),
+          ),
+        ),
+      ]),
+    );
   }
 
   Widget _buildTopItems() {

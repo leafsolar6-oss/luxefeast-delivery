@@ -106,7 +106,7 @@ class _CartSheetState extends State<CartSheet> {
               child: Row(children: [
                 Expanded(
                     child: Text('Your cart',
-                        style: GoogleFonts.playfairDisplay(
+                        style: GoogleFonts.inter(
                             fontSize: 22,
                             fontWeight: FontWeight.w700,
                             color: LuxTheme.textPrimary))),

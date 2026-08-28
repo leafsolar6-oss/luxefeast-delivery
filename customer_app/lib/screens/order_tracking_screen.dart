@@ -264,7 +264,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         ]),
         const SizedBox(height: 16),
         Text(headline,
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.inter(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
                 color: isTerminatedEarly ? LuxTheme.error : LuxTheme.gold)),

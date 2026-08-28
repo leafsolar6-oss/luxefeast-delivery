@@ -1,23 +1,28 @@
 import 'package:flutter/material.dart';
 
-/// Nature Fete brand — fresh greens on clean white.
+/// Nature Fete theme — Chowdeck-inspired: deep green, clean white surfaces,
+/// near-black text, amber highlights. Bold, friendly, uncluttered.
 class LuxTheme {
-  // Brand greens
-  static const Color primary = Color(0xFF1E7B47);      // deep fresh green
-  static const Color primaryLight = Color(0xFF57BB7F); // tender leaf green
+  // Brand greens (measured from the reference app's palette)
+  static const Color primary = Color(0xFF008050);       // deep chow-green
+  static const Color primaryDark = Color(0xFF005030);   // darker shade
+  static const Color primaryLight = Color(0xFF00C071);  // bright accent
 
-  // Surfaces (light, airy)
-  static const Color bg = Color(0xFFF6FAF7);            // app background — near-white
-  static const Color surface = Color(0xFFEDF5EE);       // soft green-tinted panels
+  // Accents
+  static const Color amber = Color(0xFFF5B301);         // ratings / highlights
+
+  // Surfaces
+  static const Color bg = Color(0xFFF7F7F8);            // app background
+  static const Color surface = Color(0xFFEEEEF0);       // subtle panels
   static const Color surfaceElevated = Color(0xFFFFFFFF); // cards
 
   // Text
-  static const Color textPrimary = Color(0xFF14281C);   // deep green-black
-  static const Color textSecondary = Color(0xFF5C6E60); // muted sage
+  static const Color textPrimary = Color(0xFF111111);   // near-black
+  static const Color textSecondary = Color(0xFF6B7280); // grey
 
   // Semantics
-  static const Color success = Color(0xFF15803D);
-  static const Color error = Color(0xFFDC2626);
+  static const Color success = Color(0xFF008050);
+  static const Color error = Color(0xFFE5484D);
 
   // Backwards-compatible aliases used across the app.
   static const Color gold = primary;
@@ -47,23 +52,23 @@ class LuxTheme {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
       textTheme: TextTheme(
-        displayLarge: TextStyle(fontFamily: 'PlayfairDisplay', fontWeight: FontWeight.w700, color: textPrimary, fontSize: 32),
-        headlineMedium: TextStyle(fontFamily: 'PlayfairDisplay', fontWeight: FontWeight.w600, color: textPrimary, fontSize: 24),
-        titleLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, color: textPrimary, fontSize: 18),
+        displayLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w800, color: textPrimary, fontSize: 32),
+        headlineMedium: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w800, color: textPrimary, fontSize: 24),
+        titleLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, color: textPrimary, fontSize: 18),
         bodyLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w400, color: textPrimary, fontSize: 16, height: 1.5),
         bodyMedium: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w400, color: textSecondary, fontSize: 14, height: 1.5),
-        labelLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, color: primary, fontSize: 14, letterSpacing: 1.2),
+        labelLarge: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, color: primary, fontSize: 14, letterSpacing: 0.3),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: bg,
+        backgroundColor: primary,
         elevation: 0,
-        centerTitle: true,
-        iconTheme: IconThemeData(color: primary),
-        titleTextStyle: TextStyle(fontFamily: 'PlayfairDisplay', fontSize: 20, fontWeight: FontWeight.w700, color: textPrimary),
+        centerTitle: false,
+        iconTheme: IconThemeData(color: Colors.white),
+        titleTextStyle: TextStyle(fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
       ),
       cardTheme: CardThemeData(
         color: surfaceElevated,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: primary.withOpacity(0.15), width: 1)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         elevation: 0,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -71,9 +76,17 @@ class LuxTheme {
           backgroundColor: primary,
           foregroundColor: Colors.white,
           padding: EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(32)),
-          textStyle: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 16, letterSpacing: 0.5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          textStyle: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 16),
         ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surfaceElevated,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none),
+        hintStyle: TextStyle(color: textSecondary, fontSize: 14),
       ),
     );
   }

@@ -67,7 +67,7 @@ class _MenuSheetState extends State<_MenuSheet> {
         backgroundColor: LuxTheme.surfaceElevated,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: Text('Start a new cart?',
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.inter(
                 fontWeight: FontWeight.w600, color: LuxTheme.textPrimary)),
         content: Text(
             'Your cart has items from ${cart.shopName}. Ordering from $_shopName will replace them.',
@@ -139,7 +139,7 @@ class _MenuSheetState extends State<_MenuSheet> {
         decoration: BoxDecoration(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           gradient: LinearGradient(
-              colors: [Colors.transparent, LuxTheme.deepBlack.withOpacity(0.92)],
+              colors: [Colors.transparent, LuxTheme.primaryDark.withOpacity(0.92)],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter),
         ),
@@ -149,21 +149,21 @@ class _MenuSheetState extends State<_MenuSheet> {
         child: Row(children: [
           Expanded(
               child: Text(_shopName,
-                  style: GoogleFonts.playfairDisplay(
-                      fontSize: 20, fontWeight: FontWeight.w700, color: LuxTheme.textPrimary))),
+                  style: GoogleFonts.inter(
+                      fontSize: 20, fontWeight: FontWeight.w800, color: Colors.white))),
           Text('~${widget.shop['avg_prep_minutes']} min',
               style: GoogleFonts.inter(
-                  color: LuxTheme.gold, fontSize: 12, fontWeight: FontWeight.w600)),
+                  color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
         ]),
       ),
       Positioned(
         top: 12, right: 12,
         child: CircleAvatar(
           radius: 16,
-          backgroundColor: LuxTheme.deepBlack.withOpacity(0.6),
+          backgroundColor: Colors.black.withOpacity(0.35),
           child: IconButton(
             padding: EdgeInsets.zero,
-            icon: const Icon(Icons.close_rounded, color: LuxTheme.textPrimary, size: 18),
+            icon: const Icon(Icons.close_rounded, color: Colors.white, size: 18),
             onPressed: () => Navigator.pop(context),
           ),
         ),

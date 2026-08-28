@@ -28,6 +28,24 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
   String? error;
   int deliveredToday = 0;
   int defaultPrepMinutes = 20;
+  String _filter = 'all'; // all | new | preparing | ready
+
+  List<Map<String, dynamic>> get _filtered {
+    switch (_filter) {
+      case 'new':
+        return orders.where((o) => o['status'] == 'placed').toList();
+      case 'preparing':
+        return orders.where((o) =>
+            o['status'] == 'accepted' || o['status'] == 'preparing').toList();
+      case 'ready':
+        return orders.where((o) =>
+            o['status'] == 'ready_for_pickup' ||
+            o['status'] == 'picked_up' ||
+            o['status'] == 'in_transit').toList();
+      default:
+        return orders;
+    }
+  }
 
   @override
   void initState() {
@@ -315,7 +333,9 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
             _buildSummaryCards(),
             const SizedBox(height: 24),
             const SectionTitle('Active Orders'),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            _buildFilterTabs(),
+            const SizedBox(height: 8),
             if (loading)
               const Padding(
                 padding: EdgeInsets.all(40),
@@ -323,10 +343,10 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
               )
             else if (error != null)
               ErrorCard('Cannot reach Nature Fete servers.\nPull down to retry.')
-            else if (orders.isEmpty)
+            else if (_filtered.isEmpty)
               _buildEmpty()
             else
-              ...orders.map(_buildOrderCard),
+              ..._filtered.map(_buildOrderCard),
           ],
         ),
       ),
@@ -374,6 +394,39 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
                 value: '$deliveredToday',
                 color: LuxTheme.success)),
       ]);
+
+  Widget _buildFilterTabs() {
+    final tabs = {
+      'all': 'All (${orders.length})',
+      'new': 'New (${orders.where((o) => o['status'] == 'placed').length})',
+      'preparing': 'Preparing',
+      'ready': 'Out for pickup',
+    };
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: tabs.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (ctx, i) {
+          final key = tabs.keys.elementAt(i);
+          final selected = _filter == key;
+          return ChoiceChip(
+            label: Text(tabs[key]!,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: selected ? Colors.white : LuxTheme.textPrimary)),
+            selected: selected,
+            onSelected: (_) => setState(() => _filter = key),
+            backgroundColor: Colors.white,
+            selectedColor: LuxTheme.primary,
+            showCheckmark: false,
+          );
+        },
+      ),
+    );
+  }
 
   Widget _buildEmpty() => Container(
         padding: const EdgeInsets.all(32),

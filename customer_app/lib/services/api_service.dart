@@ -45,6 +45,13 @@ class ApiService {
     return decoded;
   }
 
+  /// The signed-in customer's order history (Orders tab).
+  static Future<List<dynamic>> fetchMyOrders(int customerId) async {
+    final res = await http.get(_u('/orders?customerId=$customerId'));
+    if (res.statusCode != 200) throw Exception('Failed to load orders (${res.statusCode})');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
   static Future<Map<String, dynamic>> fetchOrder(dynamic id) async {
     final res = await http.get(_u('/orders/$id'));
     if (res.statusCode != 200) throw Exception('Order not found');

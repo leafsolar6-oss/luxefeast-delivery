@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'services/popup_notifier.dart';
-import 'screens/home_screen.dart';
+import 'screens/app_shell.dart';
 import 'services/session.dart';
 import 'services/auth_api.dart';
 import 'services/cart_service.dart';
@@ -72,6 +72,6 @@ class _AppGateState extends State<AppGate> {
         body: Center(child: CircularProgressIndicator(color: LuxTheme.gold)),
       );
     }
-    return const CustomerHomeScreen();
+    return const AppShell();
   }
 }

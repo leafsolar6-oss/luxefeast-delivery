@@ -1,21 +1,28 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 
 import '../services/session.dart';
+import '../services/popup_notifier.dart';
 
 /// Firebase Cloud Messaging — real device notifications, delivered even when
 /// the app is backgrounded or killed.
 ///
-/// Gracefully disabled (never crashes, never blocks the app) when:
-///  - Firebase isn't configured yet (placeholder google-services.json), or
-///  - the user isn't logged in (device tokens are tied to accounts).
+/// v4.1: registration is now RETRIED automatically and every outcome is
+/// announced with a visible banner — no more silent failures.
 class PushService {
   static bool enabled = false;
   static String? _token;
+  static bool _registeredOk = false;
+  static bool _announced = false;
+  static int _getTokenAttempts = 0;
+  static Timer? _retryTimer;
+
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
@@ -24,16 +31,26 @@ class PushService {
   static String get _baseUrl =>
       String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:5000');
 
+  static void _announce(String title, String message, {bool error = false}) {
+    if (_announced && !error) return; // success banner only once per session
+    PopupNotifier.banner(
+      title: title,
+      message: message,
+      icon: error ? Icons.warning_rounded : Icons.notifications_active_rounded,
+      color: error ? const Color(0xFFE5484D) : const Color(0xFF008050),
+      duration: const Duration(seconds: 4),
+    );
+  }
+
   static Future<void> init() async {
     if (enabled || Session.token == null) return;
     try {
       await Firebase.initializeApp();
       final messaging = FirebaseMessaging.instance;
 
-      // Android 13+ / iOS permission prompt.
-      await messaging.requestPermission(alert: true, badge: true, sound: true);
+      final settings = await messaging.requestPermission(
+          alert: true, badge: true, sound: true);
 
-      // Notification channel — matches AndroidManifest + the server's channelId.
       await _notifications.initialize(const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
       ));
@@ -48,28 +65,65 @@ class PushService {
             playSound: true,
           ));
 
-      // Foreground messages are NOT shown by the OS — and our socket-driven
-      // pop-ups already alert while the app is open, so nothing to do here.
-      // Background/killed: the system tray shows the notification by itself.
+      // Attach the refresh listener BEFORE the first getToken — devices that
+      // aren't ready yet will deliver the token here.
+      messaging.onTokenRefresh.listen((t) {
+        _token = t;
+        _register(t);
+      });
 
-      // Tapping a notification (app in background) → open live tracking.
       FirebaseMessaging.onMessageOpenedApp.listen(_handleTap);
-      // Tapping a notification that cold-started the app.
       messaging.getInitialMessage().then((m) {
         if (m != null) _handleTap(m);
       });
 
       final token = await messaging.getToken();
-      if (token != null) {
-        _token = token;
-        await _register(token);
-        messaging.onTokenRefresh.listen(_register);
-        enabled = true;
-        debugPrint('[push] FCM ready');
+      if (token == null) {
+        // Device not ready yet (Play Services still booting) — retry shortly.
+        _getTokenAttempts++;
+        if (_getTokenAttempts <= 4) {
+          Timer(const Duration(seconds: 25), init);
+        } else {
+          _announce('Push not available', 'Device did not provide a token',
+              error: true);
+        }
+        return;
       }
+
+      _token = token;
+      _registeredOk = await _register(token);
+      enabled = true;
+
+      if (_registeredOk) {
+        _announce('🔔 Notifications on',
+            'You\'ll hear new orders even when the app is closed.');
+      } else {
+        _announce('Push registered offline',
+            'The device token couldn\'t reach the server yet — retrying.',
+            error: true);
+        _scheduleRegisterRetry();
+      }
+      debugPrint('[push] ready, registered=$_registeredOk');
     } catch (e) {
       debugPrint('[push] disabled: $e');
+      _announce('Push error', e.toString().replaceAll('Exception: ', ''),
+          error: true);
     }
+  }
+
+  /// Retry the server registration until it sticks (network blips etc.).
+  static void _scheduleRegisterRetry() {
+    _retryTimer?.cancel();
+    var tries = 0;
+    _retryTimer = Timer.periodic(const Duration(seconds: 90), (t) async {
+      if (_token == null || Session.token == null || _registeredOk) {
+        t.cancel();
+        return;
+      }
+      tries++;
+      _registeredOk = await _register(_token!);
+      if (_registeredOk || tries > 5) t.cancel();
+    });
   }
 
   /// Tapping a notification opens the app straight to the dashboard, where
@@ -78,10 +132,10 @@ class PushService {
     debugPrint('[push] opened from notification');
   }
 
-  static Future<void> _register(String token) async {
-    if (Session.token == null) return;
+  static Future<bool> _register(String token) async {
+    if (Session.token == null) return false;
     try {
-      await http.post(
+      final res = await http.post(
         Uri.parse('$_baseUrl/api/auth/device-token'),
         headers: {
           'Content-Type': 'application/json',
@@ -89,11 +143,17 @@ class PushService {
         },
         body: jsonEncode({'token': token, 'platform': 'android'}),
       );
-    } catch (_) {/* offline — token refreshes will retry */}
+      debugPrint('[push] register → HTTP ${res.statusCode}');
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (e) {
+      debugPrint('[push] register failed: $e');
+      return false;
+    }
   }
 
   /// Call on logout (BEFORE clearing the session).
   static Future<void> unregister() async {
+    _retryTimer?.cancel();
     final token = _token;
     if (token != null && Session.token != null) {
       try {
@@ -106,6 +166,8 @@ class PushService {
       } catch (_) {}
     }
     _token = null;
+    _registeredOk = false;
     enabled = false;
+    _announced = false;
   }
 }

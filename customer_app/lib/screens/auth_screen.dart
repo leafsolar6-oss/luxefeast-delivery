@@ -122,7 +122,7 @@ class _AuthScreenState extends State<AuthScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
               Text('Nature Fete',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.playfairDisplay(
+                  style: GoogleFonts.inter(
                       fontSize: 36, fontWeight: FontWeight.w700, color: LuxTheme.gold)),
               Text(widget.title,
                   textAlign: TextAlign.center,
@@ -166,7 +166,7 @@ class _AuthScreenState extends State<AuthScreen> {
   List<Widget> _verifyForm() => [
         Text('Verify your account',
             textAlign: TextAlign.center,
-            style: GoogleFonts.playfairDisplay(
+            style: GoogleFonts.inter(
                 fontSize: 22, fontWeight: FontWeight.w600, color: LuxTheme.textPrimary)),
         const SizedBox(height: 8),
         Text('Enter the 6-digit codes sent to your email and phone.',
