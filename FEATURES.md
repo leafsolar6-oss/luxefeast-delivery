@@ -1,3 +1,24 @@
+# LuxFeast v3.3 — Nature Fete Rebrand
+
+**v3.3:** the business is now **Nature Fete** 🌿 — parfaits, fruit juices,
+smoothies & healthy bowls, with a fresh **green & white** theme across all
+three apps. Deployed & verified on production.
+
+- Shop renamed (one-time migration, idempotent): *Mama Nkem Amala Palace* →
+  **Nature Fete** · cuisines: Parfaits / Fruit Juices / Smoothies / Healthy
+  Bowls · 15-min default prep · ⭐ 4.9
+- Menu swapped to 13 fresh items: 3 parfaits, 3 juices, 2 smoothies, 2 bowls,
+  avocado toast, coconut water, energy bites
+- Demo shop login renamed to 'Nature Fete' (same credentials:
+  shop@luxefeast.com / demo123)
+- All three apps re-themed: deep green #1E7B47 + white surfaces (light mode)
+- Customer app: Nature Fete branding + 'Fresh From Our Kitchen' header
+- Template demo shops (Jollof Republic, Suya Palace) closed on production so
+  customers see only Nature Fete — reopen anytime via PATCH /api/shops/2|3
+  {"isOpen": true} or delete their seed rows on a fresh install
+
+---
+
 # LuxFeast v3.2 — Shop App Feature Pack + Guest Browsing & Cart
 
 **v3.2 additions:** the customer app is now **browse-first** — menus open
