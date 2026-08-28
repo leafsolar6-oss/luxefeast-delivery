@@ -1,3 +1,30 @@
+# LuxFeast v3.4 — Pop-up Notifications
+
+**v3.4:** pop-up notifications across all three apps — slide-in banners over
+any screen, plus a full-screen NEW ORDER popup for the shop and a Claim popup
+for riders. Works while each app is in the foreground; no permissions needed.
+
+- **Shared `PopupNotifier`** (per app): animated top banners with icon, title,
+  message, optional action button; auto-dismiss; tap-through actions; max 3
+  stacked; sound + vibration for critical events.
+- **Shop app**: NEW ORDER = full-screen popup (sound + double vibration) with
+  items, total and one-tap **Accept / Reject / View**. Rider assigned, rider
+  at shop, picked up, delivered, cancelled → banners.
+- **Customer app**: popups for every order status change (accepted, preparing,
+  ready, rider assigned, picked up, in transit, arrived, delivered,
+  cancelled/rejected) — tap to open live tracking. Popups are suppressed for
+  the order you're already watching. Fixed a latent double-socket leak on
+  re-login.
+- **Rider app**: delivery offers pop up with sound + a **Claim** button
+  (claims straight from the popup, handles the "too slow" case), plus banners
+  for ready-for-pickup, payout, cancelled.
+
+Verified end-to-end (v2-protocol clients = the real APK protocol): shop
+received `order:placed`, rider received `delivery:offer`, customer received
+`order:accepted`. `flutter analyze`: 0 errors/warnings ×3; tests passing.
+
+---
+
 # LuxFeast v3.3 — Nature Fete Rebrand
 
 **v3.3:** the business is now **Nature Fete** 🌿 — parfaits, fruit juices,

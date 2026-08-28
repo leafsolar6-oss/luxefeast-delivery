@@ -49,6 +49,7 @@ class _CartSheetState extends State<CartSheet> {
       if (signedIn != true || !Session.isLoggedIn) return; // user backed out
       // Now we have a session — live order events need the real customer room.
       SocketService.connect(customerId: Session.userId);
+      SocketService.attachOrderNotifications();
     }
 
     setState(() => placing = true);

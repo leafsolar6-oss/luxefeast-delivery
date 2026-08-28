@@ -30,7 +30,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    if (Session.isLoggedIn) SocketService.connect(customerId: Session.userId);
+    if (Session.isLoggedIn) {
+      SocketService.connect(customerId: Session.userId);
+      SocketService.attachOrderNotifications();
+    }
     _loadShops();
   }
 
@@ -47,6 +50,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       if (!mounted) return;
       if (Session.isLoggedIn) {
         SocketService.connect(customerId: Session.userId);
+        SocketService.attachOrderNotifications();
         setState(() {});
       }
       return;

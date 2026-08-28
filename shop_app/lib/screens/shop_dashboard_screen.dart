@@ -5,6 +5,7 @@ import '../theme/app_theme.dart';
 import '../services/socket_service.dart';
 import '../services/api_service.dart';
 import '../services/session.dart';
+import '../services/popup_notifier.dart';
 import '../main.dart';
 import '../widgets/shop_widgets.dart';
 import 'order_detail_sheet.dart';
@@ -39,38 +40,138 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
   void _connectRealtime() {
     SocketService.connect(shopId: shopId);
     SocketService.onNewOrder((data) {
-      _alertNewOrder();
+      final order = data['order'] as Map<String, dynamic>?;
+      if (order != null) {
+        _showNewOrderPopup(order);
+      } else {
+        _banner('New order', '${data['message'] ?? 'New order received'}',
+            Icons.notifications_active_rounded, LuxTheme.error,
+            sound: true);
+      }
       _refresh();
     });
     SocketService.onRiderAssigned((data) {
-      shopToast(context, '🏍️ ${data['message'] ?? 'A rider was assigned'}');
+      _banner('Rider assigned', '${data['message'] ?? 'A rider was assigned'}',
+          Icons.sports_motorsports_rounded, LuxTheme.primary);
       _refresh();
     });
     SocketService.onRiderAtShop((data) {
-      shopToast(context, '📍 ${data['message'] ?? 'Rider is at your shop'}');
+      _banner('Rider at your shop', '${data['message'] ?? 'Rider is at your shop'}',
+          Icons.location_on_rounded, LuxTheme.primaryLight);
       _refresh();
     });
     SocketService.onOrderPickedUp((data) {
-      shopToast(context, '📦 ${data['message'] ?? 'Order picked up'}');
+      _banner('Picked up', '${data['message'] ?? 'Order picked up'}',
+          Icons.inventory_2_rounded, LuxTheme.primaryLight);
       _refresh();
     });
     SocketService.onOrderDelivered((data) {
-      shopToast(context, '✅ ${data['message'] ?? 'Order delivered'}');
+      _banner('Delivered 🎉', '${data['message'] ?? 'Order delivered'}',
+          Icons.check_circle_rounded, LuxTheme.success);
       setState(() => deliveredToday++);
       _refresh();
     });
     SocketService.onOrderCancelled((data) {
-      shopToast(context, '❌ ${data['message'] ?? 'Order cancelled'}');
+      _banner('Order cancelled', '${data['message'] ?? 'Order cancelled'}',
+          Icons.cancel_rounded, LuxTheme.error);
       _refresh();
     });
   }
 
-  /// New order = full attention: sound + vibration + banner.
-  void _alertNewOrder() {
+  void _banner(String title, String message, IconData icon, Color color,
+      {bool sound = false}) {
+    PopupNotifier.banner(
+        title: title, message: message, icon: icon, color: color, sound: sound);
+  }
+
+  /// NEW ORDER = full attention: sound + vibration + full-screen popup
+  /// with the items and one-tap Accept / Reject.
+  bool _orderPopupOpen = false;
+  void _showNewOrderPopup(Map<String, dynamic> order) {
+    if (!mounted) return;
     SystemSound.play(SystemSoundType.alert);
     HapticFeedback.heavyImpact();
     Future.delayed(const Duration(milliseconds: 400), () => HapticFeedback.mediumImpact());
-    shopToast(context, '🔔 NEW ORDER — turn up the heat!');
+    if (_orderPopupOpen) {
+      _banner('New order', 'Order ${order['code']} waiting for you',
+          Icons.notifications_active_rounded, LuxTheme.error);
+      return;
+    }
+    _orderPopupOpen = true;
+    final items = (order['items'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: LuxTheme.surfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: Column(children: [
+          Container(
+            width: 56, height: 56,
+            decoration: BoxDecoration(
+                color: LuxTheme.error.withOpacity(0.12), shape: BoxShape.circle),
+            child: const Icon(Icons.notifications_active_rounded,
+                color: LuxTheme.error, size: 30),
+          ),
+          const SizedBox(height: 10),
+          Text('NEW ORDER',
+              style: GoogleFonts.playfairDisplay(
+                  fontSize: 22, fontWeight: FontWeight.w700, color: LuxTheme.textPrimary)),
+          const SizedBox(height: 2),
+          Text('${order['code']} · ${money(order['total'])}',
+              style: GoogleFonts.inter(
+                  fontSize: 14, fontWeight: FontWeight.w700, color: LuxTheme.primary)),
+        ]),
+        content: Column(mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Customer: ${order['customer_name'] ?? '—'}',
+              style: const TextStyle(color: LuxTheme.textPrimary,
+                  fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 10),
+          ...items.take(5).map((i) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Row(children: [
+                  Text('${i['quantity'] ?? 1}×',
+                      style: const TextStyle(
+                          color: LuxTheme.primary,
+                          fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text('${i['name']}',
+                          style: const TextStyle(
+                              color: LuxTheme.textPrimary, fontSize: 13))),
+                ]),
+              )),
+          if (items.length > 5)
+            Text('+ ${items.length - 5} more…',
+                style: const TextStyle(
+                    color: LuxTheme.textSecondary, fontSize: 12)),
+        ]),
+        actions: [
+          TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _orderPopupOpen = false;
+                showOrderDetailSheet(context, order['id']);
+              },
+              child: const Text('View', style: TextStyle(color: LuxTheme.textSecondary))),
+          TextButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _orderPopupOpen = false;
+                _rejectFlow(order);
+              },
+              child: const Text('Reject', style: TextStyle(color: LuxTheme.error))),
+          ElevatedButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _orderPopupOpen = false;
+                _acceptFlow(order);
+              },
+              child: const Text('Accept')),
+        ],
+      ),
+    ).then((_) => _orderPopupOpen = false);
   }
 
   Future<void> _loadShop() async {

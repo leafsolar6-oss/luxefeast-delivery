@@ -46,7 +46,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   void _listen() {
+    SocketService.activeTrackingOrderId = widget.orderId;
     SocketService.joinOrder(widget.orderId);
+  }
+
+  @override
+  void dispose() {
+    SocketService.activeTrackingOrderId = null;
+    super.dispose();
 
     void update(dynamic data, {String? overrideStatus}) {
       if (!mounted) return;

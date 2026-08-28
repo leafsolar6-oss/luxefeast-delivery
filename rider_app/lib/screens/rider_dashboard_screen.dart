@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/session.dart';
+import '../services/popup_notifier.dart';
 import '../main.dart';
 import '../services/socket_service.dart';
 
@@ -38,25 +39,88 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
 
   void _connectRealtime() {
     SocketService.connect(riderId: riderId);
+
+    // Delivery offer = money on the table → pop-up with one-tap Claim.
     SocketService.onDeliveryOffer((data) {
-      _toast('🛵 ${data['message'] ?? 'New delivery available!'}');
+      final order = data['order'] as Map<String, dynamic>?;
+      final fee = order?['delivery_fee'];
+      PopupNotifier.banner(
+        title: 'New delivery offer 🛵',
+        message:
+            '${data['message'] ?? 'Pickup at ${order?['shop_name'] ?? 'the shop'}'}${fee != null ? ' — earn ₦$fee' : ''}',
+        icon: Icons.local_shipping_rounded,
+        color: LuxTheme.primary,
+        sound: true,
+        duration: const Duration(seconds: 9),
+        actionLabel: 'Claim',
+        onAction: () => _claimOffer(order?['id']),
+      );
       _refresh();
     });
-    SocketService.onDeliveryTaken((_) => _refresh());
-    SocketService.onAssignedConfirmed((_) => _refresh());
+
+    SocketService.onDeliveryTaken((data) {
+      PopupNotifier.banner(
+          title: 'Offer taken',
+          message: 'Another rider claimed it — next one is yours.',
+          icon: Icons.block_rounded,
+          color: LuxTheme.textSecondary);
+      _refresh();
+    });
+    SocketService.onAssignedConfirmed((data) {
+      PopupNotifier.banner(
+          title: 'You got it! ✅',
+          message: '${data['message'] ?? 'Delivery assigned to you'}',
+          icon: Icons.check_circle_rounded,
+          color: LuxTheme.success);
+      _refresh();
+    });
     SocketService.onOrderReady((data) {
-      _toast('🍲 ${data['message'] ?? 'Order ready for pickup!'}');
+      PopupNotifier.banner(
+          title: 'Ready for pickup 🍲',
+          message: '${data['message'] ?? 'Order ready for pickup!'}',
+          icon: Icons.restaurant_rounded,
+          color: LuxTheme.primary,
+          sound: true);
       _refresh();
     });
     SocketService.onOrderDelivered((data) {
       final payout = data['riderPayout'];
-      _toast('💰 ${payout != null ? 'Earned ₦$payout — ' : ''}${data['message'] ?? 'Delivered!'}');
+      PopupNotifier.banner(
+          title: 'Payout 💰',
+          message:
+              '${payout != null ? 'Earned ₦$payout — ' : ''}${data['message'] ?? 'Delivered!'}',
+          icon: Icons.payments_rounded,
+          color: LuxTheme.success,
+          sound: true);
       _refresh();
     });
     SocketService.onOrderCancelled((data) {
-      _toast('❌ ${data['message'] ?? 'Order cancelled'}');
+      PopupNotifier.banner(
+          title: 'Order cancelled',
+          message: '${data['message'] ?? 'Order cancelled'}',
+          icon: Icons.cancel_rounded,
+          color: LuxTheme.error);
       _refresh();
     });
+  }
+
+  Future<void> _claimOffer(dynamic orderId) async {
+    if (orderId == null) return;
+    try {
+      await ApiService.claim(orderId, riderId);
+      PopupNotifier.banner(
+          title: 'Claimed! 🎉',
+          message: 'Head to the shop for pickup.',
+          icon: Icons.check_circle_rounded,
+          color: LuxTheme.success);
+    } catch (e) {
+      PopupNotifier.banner(
+          title: 'Too slow 😅',
+          message: e.toString().replaceAll('Exception: ', ''),
+          icon: Icons.timer_off_rounded,
+          color: LuxTheme.error);
+    }
+    _refresh();
   }
 
   Future<void> _refresh() async {

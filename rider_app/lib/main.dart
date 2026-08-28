@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
+import 'services/popup_notifier.dart';
 import 'screens/rider_dashboard_screen.dart';
 import 'screens/auth_screen.dart';
 import 'services/session.dart';
@@ -18,6 +19,7 @@ class LuxFeastRiderApp extends StatelessWidget {
       theme: LuxTheme.theme,
       darkTheme: LuxTheme.theme,
       themeMode: ThemeMode.light,
+      navigatorKey: PopupNotifier.navigatorKey,
       home: const AuthGate(),
     );
   }
