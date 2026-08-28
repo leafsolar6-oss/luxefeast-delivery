@@ -1,13 +1,22 @@
-const mongoose = require('mongoose');
+require('dotenv').config();
+const { Pool } = require('pg');
 
-const connectDB = async () => {
-  try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
-  }
-};
+// DATABASE_URL works with any Postgres — paste your Neon connection string in .env:
+//   DATABASE_URL=postgresql://user:password@ep-xxxx.eu-central-1.aws.neon.tech/luxefeast?sslmode=require
+const connectionString =
+  process.env.DATABASE_URL || 'postgresql://luxefeast:luxefeast@localhost:5432/luxefeast';
 
-module.exports = connectDB;
+const needsSSL = /neon\.tech|sslmode=require/i.test(connectionString);
+
+const pool = new Pool({
+  connectionString,
+  ssl: needsSSL ? { rejectUnauthorized: false } : false,
+  max: 10,
+  idleTimeoutMillis: 30000,
+});
+
+pool.on('error', (err) => console.error('Unexpected PG pool error:', err.message));
+
+const query = (text, params) => pool.query(text, params);
+
+module.exports = { pool, query };
