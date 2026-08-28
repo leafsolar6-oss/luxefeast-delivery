@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'screens/home_screen.dart';
-import 'screens/auth_screen.dart';
 import 'services/session.dart';
 import 'services/auth_api.dart';
+import 'services/cart_service.dart';
 
 void main() {
   runApp(const LuxFeastApp());
@@ -20,22 +20,23 @@ class LuxFeastApp extends StatelessWidget {
       theme: LuxTheme.dark,
       darkTheme: LuxTheme.dark,
       themeMode: ThemeMode.dark,
-      home: const AuthGate(),
+      home: const AppGate(),
     );
   }
 }
 
-/// Restores a stored session (validating the JWT) or shows the auth flow.
-class AuthGate extends StatefulWidget {
-  const AuthGate({super.key});
+/// LuxFeast is browse-first: the menu shows immediately, no account needed.
+/// A stored session (if any) is restored quietly in the background —
+/// signing in is only ever required at checkout.
+class AppGate extends StatefulWidget {
+  const AppGate({super.key});
 
   @override
-  State<AuthGate> createState() => _AuthGateState();
+  State<AppGate> createState() => _AppGateState();
 }
 
-class _AuthGateState extends State<AuthGate> {
+class _AppGateState extends State<AppGate> {
   bool checking = true;
-  bool authed = false;
 
   @override
   void initState() {
@@ -44,17 +45,19 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _restore() async {
-    await Session.load();
+    await Future.wait([
+      Session.load(),
+      CartService.instance.load(), // cart survives restarts (guests included)
+    ]);
     if (Session.isLoggedIn) {
       final fresh = await AuthApi.me(Session.token!);
       if (fresh != null) {
         await Session.save(Session.token!, fresh);
-        setState(() { authed = true; checking = false; });
-        return;
+      } else {
+        await Session.clear(); // stale token → continue as guest
       }
-      await Session.clear();
     }
-    setState(() => checking = false);
+    if (mounted) setState(() => checking = false);
   }
 
   @override
@@ -63,13 +66,6 @@ class _AuthGateState extends State<AuthGate> {
       return const Scaffold(
         backgroundColor: LuxTheme.deepBlack,
         body: Center(child: CircularProgressIndicator(color: LuxTheme.gold)),
-      );
-    }
-    if (!authed) {
-      return AuthScreen(
-        role: 'customer',
-        title: 'Premium Dining • Delivered',
-        onAuthed: () => setState(() => authed = true),
       );
     }
     return const CustomerHomeScreen();

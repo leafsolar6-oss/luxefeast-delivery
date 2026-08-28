@@ -1,8 +1,29 @@
-# LuxFeast v3.1 — Shop App Feature Pack
+# LuxFeast v3.2 — Shop App Feature Pack + Guest Browsing & Cart
 
-Four new features for the shop app (plus the customer app rewiring that makes
-menus real). Analyzed clean: `flutter analyze` → 0 errors / 0 warnings on all
+**v3.2 additions:** the customer app is now **browse-first** — menus open
+immediately on launch, no account needed. An account is only required at
+checkout, and there's a proper **cart** (persisted on-device, one shop at a
+time). Widget tests pass; `flutter analyze` → 0 errors / 0 warnings on all
 three apps (Flutter 3.47.2).
+
+---
+
+## 5. 🛒 Guest browsing + cart (customer app)
+
+- **No login wall**: the app opens straight to the restaurant list & menus.
+  A stored session (if any) restores quietly in the background.
+- **Cart** (`CartService`): add items from any menu with quantity steppers;
+  the cart survives app restarts (SharedPreferences) and belongs to one shop
+  at a time — adding from a different shop asks before starting a fresh cart.
+- **Cart UI**: bag icon with live count badge in the app bar; cart sheet with
+  per-item steppers, subtotal + delivery (₦850) + service (₦200) + total.
+- **Sign in only to order**: tapping *Place order* while a guest opens the
+  auth screen ("Sign in to place your order"); after login the order is
+  placed automatically and live tracking starts.
+- **Account button**: person icon for guests (sign in), logout icon for users
+  (with confirmation; the cart is kept).
+- Fixed a pre-existing header layout overflow (60px → 40px padding) caught
+  by the new widget test.
 
 ---
 

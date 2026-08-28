@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
-import '../services/session.dart';
-import 'order_tracking_screen.dart';
+import '../services/cart_service.dart';
+import 'cart_sheet.dart';
 
-/// Browse a shop's live menu, pick quantities, place the order.
-/// Replaces the old hardcoded "signature menu" basket.
+/// Browse a shop's live menu. Adding items goes straight into the cart
+/// (no login needed) — checkout happens in the cart sheet.
 Future<void> showMenuSheet(
     BuildContext context, Map<String, dynamic> shop, String shopImage) {
   return showModalBottomSheet(
@@ -30,12 +30,11 @@ class _MenuSheet extends StatefulWidget {
 
 class _MenuSheetState extends State<_MenuSheet> {
   List<Map<String, dynamic>> items = [];
-  final Map<int, int> _qty = {}; // menu item id → quantity
   bool loading = true;
   String? error;
-  bool placing = false;
 
-  static const String deliveryAddress = '4 Fola Osibo Rd, Lekki Phase 1, Lagos';
+  int get _shopId => idOf(widget.shop['id']);
+  String get _shopName => '${widget.shop['name']}';
 
   @override
   void initState() {
@@ -58,67 +57,45 @@ class _MenuSheetState extends State<_MenuSheet> {
     }
   }
 
-  int get _itemCount => _qty.values.fold(0, (a, b) => a + b);
-
-  double get _subtotal {
-    double sum = 0;
-    for (final entry in _qty.entries) {
-      final item = items.firstWhere((i) => i['id'] == entry.key,
-          orElse: () => <String, dynamic>{});
-      if (item.isNotEmpty) {
-        sum += (double.tryParse('${item['price']}') ?? 0) * entry.value;
-      }
-    }
-    return sum;
+  /// If the cart holds another shop's food, ask before replacing it.
+  Future<bool> _ensureCartShop() async {
+    final cart = CartService.instance;
+    if (!cart.conflictsWith(_shopId)) return true;
+    final replace = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: LuxTheme.surfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('Start a new cart?',
+            style: GoogleFonts.playfairDisplay(
+                fontWeight: FontWeight.w600, color: LuxTheme.textPrimary)),
+        content: Text(
+            'Your cart has items from ${cart.shopName}. Ordering from $_shopName will replace them.',
+            style: GoogleFonts.inter(color: LuxTheme.textSecondary, fontSize: 13)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Keep old cart',
+                  style: TextStyle(color: LuxTheme.textSecondary))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Start fresh',
+                  style: TextStyle(color: LuxTheme.gold))),
+        ],
+      ),
+    );
+    return replace == true;
   }
 
-  double get _total => _subtotal + 850 + 200; // + delivery + service fee
-
-  void _bump(int itemId, int delta) {
-    setState(() {
-      final next = (_qty[itemId] ?? 0) + delta;
-      if (next <= 0) {
-        _qty.remove(itemId);
-      } else {
-        _qty[itemId] = next;
-      }
-    });
-  }
-
-  Future<void> _placeOrder() async {
-    if (_itemCount == 0 || placing) return;
-    setState(() => placing = true);
-    try {
-      final chosen = _qty.entries.map((e) {
-        final item = items.firstWhere((i) => i['id'] == e.key);
-        return {
-          'name': item['name'],
-          'price': double.tryParse('${item['price']}') ?? 0,
-          'quantity': e.value,
-        };
-      }).toList();
-      final order = await ApiService.placeOrder(
-        customerId: Session.userId,
-        shopId: widget.shop['id'],
-        items: chosen,
-        deliveryAddress: deliveryAddress,
-      );
-      if (!mounted) return;
-      Navigator.of(context).pop(); // close the menu sheet
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) =>
-            OrderTrackingScreen(orderId: order['id'], initialOrder: order),
-      ));
-    } catch (e) {
-      if (mounted) {
-        setState(() => placing = false);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('⚠️ ${e.toString().replaceAll('Exception: ', '')}'),
-          backgroundColor: LuxTheme.surfaceElevated,
-          behavior: SnackBarBehavior.floating,
-        ));
-      }
-    }
+  Future<void> _add(Map<String, dynamic> item) async {
+    if (!await _ensureCartShop()) return;
+    CartService.instance.addItem(
+      shopId: _shopId,
+      shopName: _shopName,
+      itemId: idOf(item['id']),
+      name: '${item['name']}',
+      price: double.tryParse('${item['price']}') ?? 0,
+    );
   }
 
   @override
@@ -137,7 +114,7 @@ class _MenuSheetState extends State<_MenuSheet> {
                       ? _buildEmptyMenu()
                       : _buildMenuList(),
         ),
-        _buildCheckoutBar(),
+        _buildCartBar(),
       ]),
     );
   }
@@ -171,7 +148,7 @@ class _MenuSheetState extends State<_MenuSheet> {
         left: 20, right: 20, bottom: 12,
         child: Row(children: [
           Expanded(
-              child: Text(widget.shop['name'] ?? '',
+              child: Text(_shopName,
                   style: GoogleFonts.playfairDisplay(
                       fontSize: 20, fontWeight: FontWeight.w700, color: LuxTheme.textPrimary))),
           Text('~${widget.shop['avg_prep_minutes']} min',
@@ -223,7 +200,6 @@ class _MenuSheetState extends State<_MenuSheet> {
       );
 
   Widget _buildMenuList() {
-    // Group by category in kitchen order.
     final categories = <String, List<Map<String, dynamic>>>{};
     for (final it in items) {
       categories
@@ -255,48 +231,55 @@ class _MenuSheetState extends State<_MenuSheet> {
   }
 
   Widget _buildMenuItem(Map<String, dynamic> item) {
-    final id = item['id'] as int;
-    final qty = _qty[id] ?? 0;
+    final id = idOf(item['id']);
     final price = double.tryParse('${item['price']}') ?? 0;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: LuxTheme.surfaceElevated,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: qty > 0 ? LuxTheme.gold.withOpacity(0.5) : LuxTheme.gold.withOpacity(0.08)),
-      ),
-      child: Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(item['name'] as String? ?? '',
-                style: const TextStyle(
-                    color: LuxTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
-            if (item['description'] != null && '${item['description']}'.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 2),
-                child: Text('${item['description']}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+    return ListenableBuilder(
+      listenable: CartService.instance,
+      builder: (context, _) {
+        final qty = CartService.instance.qtyOf(_shopId, id);
+        return Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: LuxTheme.surfaceElevated,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+                color: qty > 0
+                    ? LuxTheme.gold.withOpacity(0.5)
+                    : LuxTheme.gold.withOpacity(0.08)),
+          ),
+          child: Row(children: [
+            Expanded(
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('${item['name']}',
                     style: const TextStyle(
-                        color: LuxTheme.textSecondary, fontSize: 11)),
-              ),
-            const SizedBox(height: 6),
-            Text('₦${price % 1 == 0 ? price.toInt() : price.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
-                    color: LuxTheme.gold, fontWeight: FontWeight.bold, fontSize: 14)),
+                        color: LuxTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 14)),
+                if (item['description'] != null && '${item['description']}'.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text('${item['description']}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: LuxTheme.textSecondary, fontSize: 11)),
+                  ),
+                const SizedBox(height: 6),
+                Text('₦${price % 1 == 0 ? price.toInt() : price.toStringAsFixed(2)}',
+                    style: GoogleFonts.inter(
+                        color: LuxTheme.gold, fontWeight: FontWeight.bold, fontSize: 14)),
+              ]),
+            ),
+            _stepper(id, qty),
           ]),
-        ),
-        _stepper(id, qty),
-      ]),
+        );
+      },
     );
   }
 
   Widget _stepper(int id, int qty) {
     if (qty == 0) {
       return OutlinedButton(
-        onPressed: () => _bump(id, 1),
+        onPressed: () async => _add(items.firstWhere((i) => idOf(i['id']) == id)),
         style: OutlinedButton.styleFrom(
             side: const BorderSide(color: LuxTheme.gold),
             minimumSize: const Size(64, 34)),
@@ -305,7 +288,7 @@ class _MenuSheetState extends State<_MenuSheet> {
       );
     }
     return Row(children: [
-      _stepBtn(Icons.remove_rounded, () => _bump(id, -1)),
+      _stepBtn(Icons.remove_rounded, () => CartService.instance.bump(id, -1)),
       SizedBox(
         width: 30,
         child: Text('$qty',
@@ -313,7 +296,8 @@ class _MenuSheetState extends State<_MenuSheet> {
             style: GoogleFonts.inter(
                 color: LuxTheme.textPrimary, fontWeight: FontWeight.bold, fontSize: 14)),
       ),
-      _stepBtn(Icons.add_rounded, () => _bump(id, 1)),
+      _stepBtn(Icons.add_rounded,
+          () async => _add(items.firstWhere((i) => idOf(i['id']) == id))),
     ]);
   }
 
@@ -329,39 +313,49 @@ class _MenuSheetState extends State<_MenuSheet> {
         ),
       );
 
-  Widget _buildCheckoutBar() {
-    final enabled = _itemCount > 0 && !placing;
-    return Container(
-      padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.of(context).padding.bottom + 14),
-      decoration: BoxDecoration(
-        color: LuxTheme.surfaceElevated,
-        border: Border(top: BorderSide(color: LuxTheme.gold.withOpacity(0.15))),
-      ),
-      child: Row(children: [
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_itemCount == 0 ? 'Nothing selected' : '$_itemCount item${_itemCount > 1 ? 's' : ''} · ₦${_subtotal % 1 == 0 ? _subtotal.toInt() : _subtotal.toStringAsFixed(0)}',
-              style: GoogleFonts.inter(
-                  color: LuxTheme.textSecondary, fontSize: 11)),
-          const SizedBox(height: 2),
-          Text('Total ₦${_total % 1 == 0 ? _total.toInt() : _total.toStringAsFixed(0)}',
-              style: GoogleFonts.inter(
-                  fontSize: 17, fontWeight: FontWeight.bold, color: LuxTheme.textPrimary)),
-        ]),
-        const Spacer(),
-        SizedBox(
-          height: 46,
-          child: ElevatedButton(
-            onPressed: enabled ? _placeOrder : null,
-            style: ElevatedButton.styleFrom(
-                backgroundColor: enabled ? LuxTheme.gold : LuxTheme.surface),
-            child: placing
-                ? const SizedBox(
-                    height: 18, width: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: LuxTheme.deepBlack))
-                : const Text('Place order'),
+  /// Sticky bar showing cart state; opens the cart sheet.
+  Widget _buildCartBar() {
+    return ListenableBuilder(
+      listenable: CartService.instance,
+      builder: (context, _) {
+        final cart = CartService.instance;
+        if (cart.isEmpty) return const SizedBox.shrink();
+        final mine = cart.shopId == _shopId;
+        return Container(
+          padding: EdgeInsets.fromLTRB(20, 12, 20,
+              MediaQuery.of(context).padding.bottom + 12),
+          decoration: BoxDecoration(
+            color: LuxTheme.surfaceElevated,
+            border: Border(top: BorderSide(color: LuxTheme.gold.withOpacity(0.15))),
           ),
-        ),
-      ]),
+          child: Row(children: [
+            Icon(mine ? Icons.shopping_bag_rounded : Icons.info_outline_rounded,
+                color: LuxTheme.gold, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                mine
+                    ? '${cart.count} item${cart.count > 1 ? 's' : ''} · ₦${_fmt(cart.subtotal)}'
+                    : 'Cart holds items from ${cart.shopName}',
+                style: GoogleFonts.inter(
+                    color: LuxTheme.textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600),
+              ),
+            ),
+            SizedBox(
+              height: 40,
+              child: ElevatedButton(
+                onPressed: () => showCartSheet(context),
+                child: const Text('View cart'),
+              ),
+            ),
+          ]),
+        );
+      },
     );
   }
 }
+
+String _fmt(double n) =>
+    n % 1 == 0 ? n.toInt().toString() : n.toStringAsFixed(0);

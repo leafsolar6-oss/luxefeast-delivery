@@ -4,7 +4,9 @@ import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../services/session.dart';
-import '../main.dart';
+import '../services/cart_service.dart';
+import 'cart_sheet.dart';
+import 'auth_screen.dart';
 import 'menu_sheet.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -28,8 +30,53 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    SocketService.connect(customerId: Session.userId);
+    if (Session.isLoggedIn) SocketService.connect(customerId: Session.userId);
     _loadShops();
+  }
+
+  /// Guest → sign in (stays browsing afterwards); user → logout.
+  Future<void> _accountAction() async {
+    if (!Session.isLoggedIn) {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (ctx) => AuthScreen(
+          role: 'customer',
+          title: 'Premium Dining • Delivered',
+          onAuthed: () => Navigator.of(ctx).pop(true),
+        ),
+      ));
+      if (!mounted) return;
+      if (Session.isLoggedIn) {
+        SocketService.connect(customerId: Session.userId);
+        setState(() {});
+      }
+      return;
+    }
+    final logout = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: LuxTheme.surfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('Log out?',
+            style: GoogleFonts.playfairDisplay(
+                fontWeight: FontWeight.w600, color: LuxTheme.textPrimary)),
+        content: Text('You can keep browsing and ordering after signing back in.',
+            style: GoogleFonts.inter(color: LuxTheme.textSecondary, fontSize: 13)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Stay',
+                  style: TextStyle(color: LuxTheme.textSecondary))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Log out', style: TextStyle(color: LuxTheme.error))),
+        ],
+      ),
+    );
+    if (logout == true) {
+      await Session.clear();
+      SocketService.disconnect();
+      setState(() {});
+    }
   }
 
   Future<void> _loadShops() async {
@@ -76,15 +123,32 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 floating: true,
                 backgroundColor: LuxTheme.deepBlack,
                 actions: [
-                  IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: LuxTheme.textSecondary),
-                    onPressed: () async {
-                      await Session.clear();
-                      if (context.mounted) {
-                        Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const AuthGate()), (r) => false);
-                      }
+                  ListenableBuilder(
+                    listenable: CartService.instance,
+                    builder: (context, _) {
+                      final count = CartService.instance.count;
+                      return IconButton(
+                        icon: Badge(
+                          isLabelVisible: count > 0,
+                          label: Text('$count',
+                              style: const TextStyle(
+                                  fontSize: 10, fontWeight: FontWeight.bold)),
+                          backgroundColor: LuxTheme.gold,
+                          textColor: LuxTheme.deepBlack,
+                          child: const Icon(Icons.shopping_bag_outlined,
+                              color: LuxTheme.textPrimary),
+                        ),
+                        onPressed: () => showCartSheet(context),
+                      );
                     },
+                  ),
+                  IconButton(
+                    icon: Icon(
+                        Session.isLoggedIn
+                            ? Icons.logout_rounded
+                            : Icons.person_outline_rounded,
+                        color: LuxTheme.textSecondary),
+                    onPressed: _accountAction,
                   ),
                 ],
                 flexibleSpace: FlexibleSpaceBar(
@@ -96,7 +160,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                           end: Alignment.bottomCenter),
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
@@ -107,7 +171,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                                   fontWeight: FontWeight.w700,
                                   color: LuxTheme.gold)),
                           const SizedBox(height: 4),
-                          Text('Welcome back, ${Session.name.split(' ').first} ✨',
+                          Text(
+                              Session.isLoggedIn
+                                  ? 'Welcome back, ${Session.name.split(' ').first} ✨'
+                                  : 'Browse menus · sign in to order ✨',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: GoogleFonts.inter(
                                   fontSize: 13, color: LuxTheme.textSecondary)),
                         ],
