@@ -34,6 +34,17 @@ class PushService {
 
   static void _announce(String title, String message, {bool error = false}) {
     if (_announced && !error) return; // success banner only once per session
+    // (announced flag is set once the banner actually renders)
+    _announceRetry(title, message, error: error, attempt: 0);
+  }
+
+  static void _announceRetry(String title, String message,
+      {required bool error, required int attempt}) {
+    if (PopupNotifier.navigatorKey.currentContext == null && attempt < 8) {
+      Timer(const Duration(milliseconds: 600),
+          () => _announceRetry(title, message, error: error, attempt: attempt + 1));
+      return;
+    }
     PopupNotifier.banner(
       title: title,
       message: message,
@@ -41,16 +52,20 @@ class PushService {
       color: error ? const Color(0xFFE5484D) : const Color(0xFF008050),
       duration: const Duration(seconds: 4),
     );
+    _announced = true;
   }
 
   static Future<void> init() async {
     if (enabled || Session.token == null) return;
     try {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp()
+          .timeout(const Duration(seconds: 12));
       final messaging = FirebaseMessaging.instance;
 
-      final settings = await messaging.requestPermission(
-          alert: true, badge: true, sound: true);
+      await messaging
+          .requestPermission(alert: true, badge: true, sound: true)
+          .timeout(const Duration(seconds: 10))
+          .catchError((_) {});
 
       await _notifications.initialize(const InitializationSettings(
         android: AndroidInitializationSettings('@mipmap/ic_launcher'),
@@ -64,6 +79,7 @@ class PushService {
             description: 'Order status updates',
             importance: Importance.max,
             playSound: true,
+            showBadge: true,
           ));
 
       // Attach the refresh listener BEFORE the first getToken — devices that
@@ -78,7 +94,8 @@ class PushService {
         if (m != null) _handleTap(m);
       });
 
-      final token = await messaging.getToken();
+      final token = await messaging.getToken()
+          .timeout(const Duration(seconds: 15));
       if (token == null) {
         // Device not ready yet (Play Services still booting) — retry shortly.
         _getTokenAttempts++;

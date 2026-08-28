@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,6 +19,7 @@ class OrderTrackingScreen extends StatefulWidget {
 }
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
+  Timer? _pollTimer;
   Map<String, dynamic>? order;
   String status = 'placed';
   String? riderName;
@@ -48,10 +50,15 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   void _listen() {
     SocketService.activeTrackingOrderId = widget.orderId;
     SocketService.joinOrder(widget.orderId);
+    // Safety net: refresh tracking every 15s even without live sockets.
+    _pollTimer = Timer.periodic(const Duration(seconds: 15), (_) {
+      if (mounted) _refresh();
+    });
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     SocketService.activeTrackingOrderId = null;
     super.dispose();
 

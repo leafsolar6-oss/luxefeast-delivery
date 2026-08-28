@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -15,6 +16,7 @@ class OrdersScreen extends StatefulWidget {
 }
 
 class _OrdersScreenState extends State<OrdersScreen> {
+  Timer? _pollTimer;
   List<Map<String, dynamic>> orders = [];
   bool loading = true;
   String? error;
@@ -23,6 +25,15 @@ class _OrdersScreenState extends State<OrdersScreen> {
   void initState() {
     super.initState();
     if (Session.isLoggedIn) _load();
+    _pollTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted && Session.isLoggedIn) _load();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _load() async {

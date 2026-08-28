@@ -1,7 +1,7 @@
 name: luxefeast_shop
 description: Premium restaurant management app for LuxFeast partners.
 publish_to: 'none'
-version: 4.1.0+5
+version: 4.2.0+6
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
@@ -12,7 +12,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   google_fonts: ^6.2.1
   http: ^1.2.2
-  socket_io_client: ^3.1.6
+  socket_io_client: 2.0.3+1
 
   # Firebase push notifications (FCM)
   firebase_core: ^3.6.0

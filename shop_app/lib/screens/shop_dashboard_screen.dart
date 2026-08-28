@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -19,7 +20,8 @@ class ShopDashboardScreen extends StatefulWidget {
   State<ShopDashboardScreen> createState() => _ShopDashboardScreenState();
 }
 
-class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
+class _ShopDashboardScreenState extends State<ShopDashboardScreen>
+    with WidgetsBindingObserver {
   int get shopId => Session.entityId > 0 ? Session.entityId : 1;
 
   List<Map<String, dynamic>> orders = [];
@@ -47,12 +49,32 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
     }
   }
 
+  Timer? _pollTimer;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _connectRealtime();
     _refresh();
     _loadShop();
+    // Belt & braces: even if live sockets ever fail, the dashboard
+    // still refreshes itself every 20 seconds.
+    _pollTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      if (mounted) _refresh();
+    });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && mounted) _refresh();
+  }
+
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   void _connectRealtime() {
