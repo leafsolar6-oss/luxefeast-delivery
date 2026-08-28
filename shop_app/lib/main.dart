@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
-import 'screens/shop_dashboard_screen.dart';
+import 'screens/shop_home_shell.dart';
 import 'screens/auth_screen.dart';
 import 'services/session.dart';
 import 'services/auth_api.dart';
@@ -69,6 +69,6 @@ class _AuthGateState extends State<AuthGate> {
         onAuthed: () => setState(() => authed = true),
       );
     }
-    return const ShopDashboardScreen();
+    return const ShopHomeShell();
   }
 }

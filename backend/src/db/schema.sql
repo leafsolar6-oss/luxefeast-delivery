@@ -98,3 +98,18 @@ CREATE INDEX IF NOT EXISTS idx_orders_shop    ON orders (shop_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_rider   ON orders (rider_id, status);
 CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders (customer_id, placed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_events_order   ON order_events (order_id, created_at);
+
+-- v3.1 — shop-managed menus (replaces hardcoded menus in the customer app).
+CREATE TABLE IF NOT EXISTS menu_items (
+  id           BIGSERIAL PRIMARY KEY,
+  shop_id      BIGINT NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  description  TEXT,
+  price        NUMERIC(12,2) NOT NULL CHECK (price >= 0),
+  category     TEXT NOT NULL DEFAULT 'Mains',
+  image_url    TEXT,
+  is_available BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order   INT NOT NULL DEFAULT 0,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_menu_shop ON menu_items (shop_id, is_available, sort_order);

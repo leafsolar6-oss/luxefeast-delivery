@@ -5,7 +5,7 @@ import '../services/api_service.dart';
 import '../services/socket_service.dart';
 import '../services/session.dart';
 import '../main.dart';
-import 'order_tracking_screen.dart';
+import 'menu_sheet.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
   const CustomerHomeScreen({super.key});
@@ -15,32 +15,14 @@ class CustomerHomeScreen extends StatefulWidget {
 }
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
-  static const String deliveryAddress = '4 Fola Osibo Rd, Lekki Phase 1, Lagos';
-
   List<Map<String, dynamic>> shops = [];
   bool loading = true;
   String? error;
-  bool placing = false;
 
   static const Map<String, String> shopImages = {
     'Mama Nkem Amala Palace': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80',
     'Jollof Republic Lagos': 'https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?w=600&q=80',
     'Suya Palace Abuja': 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&q=80',
-  };
-
-  static const Map<String, List<Map<String, dynamic>>> signatureMenu = {
-    'Mama Nkem Amala Palace': [
-      {'name': 'Amala + Ewedu & Gbegiri', 'quantity': 1, 'price': 3500},
-      {'name': 'Assorted Goat Meat', 'quantity': 1, 'price': 2000},
-    ],
-    'Jollof Republic Lagos': [
-      {'name': 'Party Jollof + Chicken', 'quantity': 1, 'price': 4200},
-      {'name': 'Dodo (Fried Plantain)', 'quantity': 1, 'price': 1200},
-    ],
-    'Suya Palace Abuja': [
-      {'name': 'Beef Suya (Full Stick)', 'quantity': 2, 'price': 2500},
-      {'name': 'Masa + Yaji', 'quantity': 1, 'price': 1500},
-    ],
   };
 
   @override
@@ -68,32 +50,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     }
   }
 
-  Future<void> _orderFrom(Map<String, dynamic> shop) async {
-    if (placing) return;
-    setState(() => placing = true);
-    try {
-      final items = signatureMenu[shop['name']] ??
-          [{'name': 'Chef Special', 'quantity': 1, 'price': 4000}];
-      final order = await ApiService.placeOrder(
-        customerId: Session.userId,
-        shopId: shop['id'],
-        items: items,
-        deliveryAddress: deliveryAddress,
-      );
-      if (!mounted) return;
-      Navigator.of(context).push(MaterialPageRoute(
-        builder: (_) => OrderTrackingScreen(orderId: order['id'], initialOrder: order),
-      ));
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('⚠️ ${e.toString().replaceAll('Exception: ', '')}'),
-        backgroundColor: LuxTheme.surfaceElevated,
-        behavior: SnackBarBehavior.floating,
-      ));
-    } finally {
-      if (mounted) setState(() => placing = false);
-    }
+  /// Tap a restaurant → browse its LIVE menu (managed by the shop in their app).
+  void _orderFrom(Map<String, dynamic> shop) {
+    showMenuSheet(
+      context,
+      shop,
+      shopImages[shop['name']] ??
+          'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80',
+    );
   }
 
   @override
@@ -199,7 +163,6 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         shop: shops[i],
                         image: shopImages[shops[i]['name']] ??
                             'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80',
-                        busy: placing,
                         onOrder: () => _orderFrom(shops[i]),
                       ),
                       childCount: shops.length,
@@ -218,10 +181,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 class _ShopCard extends StatelessWidget {
   final Map<String, dynamic> shop;
   final String image;
-  final bool busy;
   final VoidCallback onOrder;
   const _ShopCard(
-      {required this.shop, required this.image, required this.busy, required this.onOrder});
+      {required this.shop, required this.image, required this.onOrder});
 
   @override
   Widget build(BuildContext context) {
@@ -283,12 +245,12 @@ class _ShopCard extends StatelessWidget {
               width: double.infinity,
               height: 44,
               child: ElevatedButton.icon(
-                onPressed: busy ? null : onOrder,
+                onPressed: onOrder,
                 style: ElevatedButton.styleFrom(
                     backgroundColor: LuxTheme.gold, foregroundColor: LuxTheme.deepBlack),
-                icon: const Icon(Icons.local_mall_rounded, size: 18),
-                label: Text(busy ? 'Placing order…' : 'Order Signature Meal',
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+                label: const Text('Browse Menu & Order',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
               ),
             ),
           ]),

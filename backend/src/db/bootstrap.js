@@ -57,6 +57,39 @@ async function seed() {
     console.log('Demo data seeded (3 shops, 1 customer, 2 riders)');
   }
 
+  // v3.1 — seed menus for the demo shops (idempotent).
+  const menuCount = await query(`SELECT COUNT(*)::int AS n FROM menu_items`);
+  if (menuCount.rows[0].n === 0) {
+    await query(
+      `INSERT INTO menu_items (shop_id, name, description, price, category, sort_order)
+       SELECT s.id, v.name, v.description, v.price, v.category, v.sort_order
+       FROM (VALUES
+        (1, 'Amala + Ewedu & Gbegiri', 'Classic trio, served piping hot', 3500, 'Mains', 1),
+        (1, 'Assorted Goat Meat',      'Slow-stewed, peppered to order',   2000, 'Proteins', 2),
+        (1, 'Pounded Yam & Egusi',     'Melon seed soup with ponmo',       3800, 'Mains', 3),
+        (1, 'Catfish Pepper Soup',     'Point-and-kill, spicy broth',      4500, 'Soups', 4),
+        (1, 'Chapman (1L)',            'The classic Nigerian mocktail',    1500, 'Drinks', 5),
+        (2, 'Party Jollof + Chicken',  'Smoky wood-fire party rice',       4200, 'Mains', 1),
+        (2, 'Dodo (Fried Plantain)',   'Caramelised, crispy edges',        1200, 'Sides', 2),
+        (2, 'Fried Rice & Beef',       'Stir-fried with liver & gizzard',  4500, 'Mains', 3),
+        (2, 'Meat Pie',                'Flaky pastry, spiced filling',      800, 'Snacks', 4),
+        (2, 'Zobo (50cl)',             'Hibiscus, ginger & pineapple',      700, 'Drinks', 5),
+        (3, 'Beef Suya (Full Stick)',  'Yaji-dusted, flame-grilled',       2500, 'Grills', 1),
+        (3, 'Masa + Yaji',             'Rice cakes with suya spice',       1500, 'Snacks', 2),
+        (3, 'Chicken Suya',            'Thigh fillets, double yaji',      3000, 'Grills', 3),
+        (3, 'Goat Pepper Soup',        'Wuse 2 favourite, herbed broth',  4000, 'Soups', 4),
+        (3, 'Kunu Aya (50cl)',         'Tiger nut milk, lightly sweet',     800, 'Drinks', 5)
+      ) AS v(shop_no, name, description, price, category, sort_order)
+      JOIN shops s ON (
+        (v.shop_no = 1 AND s.name = 'Mama Nkem Amala Palace') OR
+        (v.shop_no = 2 AND s.name = 'Jollof Republic Lagos') OR
+        (v.shop_no = 3 AND s.name = 'Suya Palace Abuja')
+      )`
+    );
+    console.log('Demo menus seeded (15 items across 3 shops)');
+  }
+
+
   // Demo login accounts (password: demo123, pre-verified) — one per role.
   const hash = await bcrypt.hash('demo123', 10);
   const demos = [

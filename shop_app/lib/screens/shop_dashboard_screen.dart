@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/socket_service.dart';
 import '../services/api_service.dart';
 import '../services/session.dart';
 import '../main.dart';
+import '../widgets/shop_widgets.dart';
+import 'order_detail_sheet.dart';
 
 /// Live shop dashboard — real orders from the LuxFeast backend with
 /// real-time alerts for every lifecycle event that concerns the shop.
@@ -19,44 +22,66 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
   int get shopId => Session.entityId > 0 ? Session.entityId : 1;
 
   List<Map<String, dynamic>> orders = [];
+  Map<String, dynamic>? shop;
   bool loading = true;
   String? error;
   int deliveredToday = 0;
+  int defaultPrepMinutes = 20;
 
   @override
   void initState() {
     super.initState();
     _connectRealtime();
     _refresh();
+    _loadShop();
   }
 
   void _connectRealtime() {
     SocketService.connect(shopId: shopId);
     SocketService.onNewOrder((data) {
-      _toast('🔔 ${data['message'] ?? 'New order received!'}');
+      _alertNewOrder();
       _refresh();
     });
     SocketService.onRiderAssigned((data) {
-      _toast('🏍️ ${data['message'] ?? 'A rider was assigned'}');
+      shopToast(context, '🏍️ ${data['message'] ?? 'A rider was assigned'}');
       _refresh();
     });
     SocketService.onRiderAtShop((data) {
-      _toast('📍 ${data['message'] ?? 'Rider is at your shop'}');
+      shopToast(context, '📍 ${data['message'] ?? 'Rider is at your shop'}');
       _refresh();
     });
     SocketService.onOrderPickedUp((data) {
-      _toast('📦 ${data['message'] ?? 'Order picked up'}');
+      shopToast(context, '📦 ${data['message'] ?? 'Order picked up'}');
       _refresh();
     });
     SocketService.onOrderDelivered((data) {
-      _toast('✅ ${data['message'] ?? 'Order delivered'}');
+      shopToast(context, '✅ ${data['message'] ?? 'Order delivered'}');
       setState(() => deliveredToday++);
       _refresh();
     });
     SocketService.onOrderCancelled((data) {
-      _toast('❌ ${data['message'] ?? 'Order cancelled'}');
+      shopToast(context, '❌ ${data['message'] ?? 'Order cancelled'}');
       _refresh();
     });
+  }
+
+  /// New order = full attention: sound + vibration + banner.
+  void _alertNewOrder() {
+    SystemSound.play(SystemSoundType.alert);
+    HapticFeedback.heavyImpact();
+    Future.delayed(const Duration(milliseconds: 400), () => HapticFeedback.mediumImpact());
+    shopToast(context, '🔔 NEW ORDER — turn up the heat!');
+  }
+
+  Future<void> _loadShop() async {
+    try {
+      final s = await ApiService.fetchShop(shopId);
+      if (!mounted) return;
+      setState(() {
+        shop = s;
+        defaultPrepMinutes = (s['avg_prep_minutes'] as num?)?.toInt() ?? 20;
+      });
+    } catch (_) {/* banner simply stays hidden */}
   }
 
   Future<void> _refresh() async {
@@ -70,20 +95,8 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() {
-        loading = false;
-        error = e.toString();
-      });
+      setState(() { loading = false; error = e.toString(); });
     }
-  }
-
-  void _toast(String msg) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-      backgroundColor: LuxTheme.surfaceElevated,
-      behavior: SnackBarBehavior.floating,
-    ));
   }
 
   Future<void> _act(Future<Map<String, dynamic>> Function() action) async {
@@ -91,7 +104,74 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
       await action();
       await _refresh();
     } catch (e) {
-      _toast('⚠️ ${e.toString().replaceAll('Exception: ', '')}');
+      if (mounted) shopToast(context, '⚠️ ${e.toString().replaceAll('Exception: ', '')}');
+    }
+  }
+
+  /// Accept flow — ask the kitchen for a realistic prep estimate.
+  Future<void> _acceptFlow(Map<String, dynamic> o) async {
+    var prep = defaultPrepMinutes;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          backgroundColor: LuxTheme.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Text('Accept ${o['code']}?',
+              style: GoogleFonts.playfairDisplay(
+                  fontWeight: FontWeight.w600, color: LuxTheme.textPrimary)),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            Text('Tell the customer how long the kitchen needs:',
+                style: GoogleFonts.inter(color: LuxTheme.textSecondary, fontSize: 13)),
+            const SizedBox(height: 18),
+            Text('$prep min',
+                style: GoogleFonts.inter(
+                    fontSize: 34, fontWeight: FontWeight.bold, color: LuxTheme.gold)),
+            Slider(
+              value: prep.toDouble(),
+              min: 5, max: 90, divisions: 17,
+              activeColor: LuxTheme.gold,
+              label: '$prep min',
+              onChanged: (v) => setDialog(() => prep = v.round()),
+            ),
+          ]),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Cancel', style: TextStyle(color: LuxTheme.textSecondary))),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Accept')),
+          ],
+        ),
+      ),
+    );
+    if (confirmed == true) {
+      await _act(() => ApiService.acceptOrder(o['id'], prepMinutes: prep));
+    }
+  }
+
+  Future<void> _rejectFlow(Map<String, dynamic> o) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: LuxTheme.surfaceElevated,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text('Reject ${o['code']}?',
+            style: GoogleFonts.playfairDisplay(
+                fontWeight: FontWeight.w600, color: LuxTheme.textPrimary)),
+        content: Text('The customer will be told the order cannot be fulfilled and refunded.',
+            style: GoogleFonts.inter(color: LuxTheme.textSecondary, fontSize: 13)),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Keep order', style: TextStyle(color: LuxTheme.textSecondary))),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Reject', style: TextStyle(color: LuxTheme.error))),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _act(() => ApiService.rejectOrder(o['id']));
     }
   }
 
@@ -100,7 +180,9 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
     return Scaffold(
       backgroundColor: LuxTheme.deepBlack,
       appBar: AppBar(
-        title: Text(Session.name.isNotEmpty ? Session.name : 'My Restaurant',
+        title: Text(
+            (shop?['name'] as String?) ??
+                (Session.name.isNotEmpty ? Session.name : 'My Restaurant'),
             style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700)),
         actions: [
           Container(
@@ -116,16 +198,6 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
                       fontSize: 10, fontWeight: FontWeight.bold, color: LuxTheme.success)),
             ]),
           ),
-          IconButton(
-            icon: const Icon(Icons.logout_rounded, color: LuxTheme.textSecondary),
-            onPressed: () async {
-              await Session.clear();
-              if (context.mounted) {
-                Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (_) => const AuthGate()), (r) => false);
-              }
-            },
-          ),
         ],
       ),
       body: RefreshIndicator(
@@ -135,11 +207,13 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
         child: ListView(
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
           children: [
+            if (shop != null && shop!['is_open'] == false) ...[
+              _buildClosedBanner(),
+              const SizedBox(height: 16),
+            ],
             _buildSummaryCards(),
             const SizedBox(height: 24),
-            Text('Active Orders',
-                style: GoogleFonts.playfairDisplay(
-                    fontSize: 22, fontWeight: FontWeight.w600, color: LuxTheme.textPrimary)),
+            const SectionTitle('Active Orders'),
             const SizedBox(height: 16),
             if (loading)
               const Padding(
@@ -147,7 +221,7 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
                 child: Center(child: CircularProgressIndicator(color: LuxTheme.gold)),
               )
             else if (error != null)
-              _buildError()
+              ErrorCard('Cannot reach LuxFeast servers.\nPull down to retry.')
             else if (orders.isEmpty)
               _buildEmpty()
             else
@@ -158,34 +232,47 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
     );
   }
 
+  Widget _buildClosedBanner() => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+            color: LuxTheme.error.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: LuxTheme.error.withOpacity(0.4))),
+        child: Row(children: [
+          const Icon(Icons.storefront_rounded, color: LuxTheme.error),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text('You are CLOSED — customers cannot see your shop.',
+                  style: GoogleFonts.inter(fontSize: 13, color: LuxTheme.textPrimary))),
+          TextButton(
+              onPressed: () async {
+                try {
+                  await ApiService.updateShop(shopId, {'isOpen': true});
+                  await _loadShop();
+                  if (mounted) shopToast(context, '🟢 You are open for orders');
+                } catch (e) {
+                  if (mounted) shopToast(context, '⚠️ ${e.toString().replaceAll('Exception: ', '')}');
+                }
+              },
+              child: const Text('Reopen', style: TextStyle(color: LuxTheme.gold))),
+        ]),
+      );
+
   Widget _buildSummaryCards() => Row(children: [
         Expanded(
-            child: _SummaryTile(
+            child: StatTile(
                 icon: Icons.restaurant_rounded,
                 label: 'Active',
                 value: '${orders.length}',
                 color: LuxTheme.gold)),
         const SizedBox(width: 12),
         Expanded(
-            child: _SummaryTile(
+            child: StatTile(
                 icon: Icons.check_circle_rounded,
                 label: 'Delivered (session)',
                 value: '$deliveredToday',
                 color: LuxTheme.success)),
       ]);
-
-  Widget _buildError() => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-            color: LuxTheme.surfaceElevated, borderRadius: BorderRadius.circular(20)),
-        child: Column(children: [
-          const Icon(Icons.wifi_off_rounded, color: LuxTheme.error, size: 36),
-          const SizedBox(height: 12),
-          Text('Cannot reach LuxFeast servers.\nPull down to retry.',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.inter(color: LuxTheme.textSecondary, fontSize: 13)),
-        ]),
-      );
 
   Widget _buildEmpty() => Container(
         padding: const EdgeInsets.all(32),
@@ -206,10 +293,9 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
     switch (status) {
       case 'placed':
         return [
-          _actionBtn('Reject', LuxTheme.error, () => _act(() => ApiService.rejectOrder(o['id']))),
+          _actionBtn('Reject', LuxTheme.error, () => _rejectFlow(o)),
           const SizedBox(width: 8),
-          _actionBtn('Accept', LuxTheme.gold,
-              () => _act(() => ApiService.acceptOrder(o['id'], prepMinutes: 20))),
+          _actionBtn('Accept', LuxTheme.gold, () => _acceptFlow(o)),
         ];
       case 'accepted':
         return [
@@ -237,105 +323,89 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
       );
 
   Widget _buildOrderCard(Map<String, dynamic> o) {
-    final items = (o['items'] as List<dynamic>? ?? [])
-        .map((i) => '${i['name']} x${i['quantity']}')
-        .join(', ');
+    final items = (o['items'] as List<dynamic>? ?? []).cast<Map<String, dynamic>>();
     final riderName = o['rider_name'];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        color: LuxTheme.surfaceElevated,
-        border: Border.all(color: LuxTheme.gold.withOpacity(0.1)),
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-                color: LuxTheme.deepBlack,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: LuxTheme.gold.withOpacity(0.4))),
-            child: Text(o['code'] ?? '#${o['id']}',
-                style: const TextStyle(
-                    color: LuxTheme.gold, fontWeight: FontWeight.w700, fontSize: 12)),
-          ),
-          const Spacer(),
-          Text('₦${o['total']}',
-              style: GoogleFonts.inter(
-                  fontSize: 18, fontWeight: FontWeight.w700, color: LuxTheme.textPrimary)),
-        ]),
-        const SizedBox(height: 12),
-        Text(o['customer_name'] ?? 'Customer',
-            style: const TextStyle(
-                color: LuxTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
-        const SizedBox(height: 4),
-        Text(items, style: const TextStyle(color: LuxTheme.textSecondary, fontSize: 13)),
-        if (riderName != null) ...[
-          const SizedBox(height: 8),
-          Row(children: [
-            const Icon(Icons.sports_motorsports_rounded, color: LuxTheme.gold, size: 16),
-            const SizedBox(width: 6),
-            Text('Rider: $riderName',
-                style: const TextStyle(color: LuxTheme.gold, fontSize: 12, fontWeight: FontWeight.w600)),
-          ]),
-        ],
-        const SizedBox(height: 16),
-        Row(children: [
-          _StatusChip(status: o['status'] as String),
-          const Spacer(),
-          ..._actionsFor(o),
-        ]),
-      ]),
-    );
-  }
-}
-
-class _SummaryTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  const _SummaryTile(
-      {required this.icon, required this.label, required this.value, required this.color});
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(16),
+    final isNew = o['status'] == 'placed';
+    return GestureDetector(
+      onTap: () => showOrderDetailSheet(context, o['id']),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-            color: LuxTheme.surfaceElevated,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: LuxTheme.gold.withOpacity(0.1))),
+          borderRadius: BorderRadius.circular(24),
+          color: LuxTheme.surfaceElevated,
+          border: Border.all(
+              color: isNew ? LuxTheme.error.withOpacity(0.5) : LuxTheme.gold.withOpacity(0.1),
+              width: isNew ? 1.5 : 1),
+        ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 8),
-          Text(value,
-              style: GoogleFonts.inter(
-                  fontSize: 22, fontWeight: FontWeight.bold, color: LuxTheme.textPrimary)),
-          Text(label, style: const TextStyle(color: LuxTheme.textSecondary, fontSize: 12)),
+          Row(children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                  color: LuxTheme.deepBlack,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: LuxTheme.gold.withOpacity(0.4))),
+              child: Text(o['code'] ?? '#${o['id']}',
+                  style: const TextStyle(
+                      color: LuxTheme.gold, fontWeight: FontWeight.w700, fontSize: 12)),
+            ),
+            if (isNew) ...[
+              const SizedBox(width: 8),
+              const Icon(Icons.notifications_active_rounded, color: LuxTheme.error, size: 16),
+            ],
+            const Spacer(),
+            Text(money(o['total']),
+                style: GoogleFonts.inter(
+                    fontSize: 18, fontWeight: FontWeight.w700, color: LuxTheme.textPrimary)),
+          ]),
+          const SizedBox(height: 12),
+          Text(o['customer_name'] ?? 'Customer',
+              style: const TextStyle(
+                  color: LuxTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
+          if (o['customer_phone'] != null)
+            Text(o['customer_phone'] as String,
+                style: const TextStyle(color: LuxTheme.textSecondary, fontSize: 12)),
+          const SizedBox(height: 10),
+          // Itemized — the kitchen needs to see exactly what to cook.
+          ...items.take(4).map((i) => Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Row(children: [
+                  Text('${i['quantity'] ?? 1}×',
+                      style: const TextStyle(
+                          color: LuxTheme.gold, fontWeight: FontWeight.w700, fontSize: 13)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                      child: Text('${i['name']}',
+                          style: const TextStyle(color: LuxTheme.textPrimary, fontSize: 13))),
+                  Text(money(i['price']),
+                      style: const TextStyle(color: LuxTheme.textSecondary, fontSize: 12)),
+                ]),
+              )),
+          if (items.length > 4)
+            Padding(
+                padding: const EdgeInsets.only(top: 2),
+                child: Text('+ ${items.length - 4} more items — tap for details',
+                    style: const TextStyle(
+                        color: LuxTheme.textSecondary, fontSize: 12, fontStyle: FontStyle.italic))),
+          if (riderName != null) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              const Icon(Icons.sports_motorsports_rounded, color: LuxTheme.gold, size: 16),
+              const SizedBox(width: 6),
+              Text('Rider: $riderName (${o['rider_vehicle'] ?? '—'})',
+                  style: const TextStyle(
+                      color: LuxTheme.gold, fontSize: 12, fontWeight: FontWeight.w600)),
+            ]),
+          ],
+          const SizedBox(height: 16),
+          Row(children: [
+            StatusChip(status: o['status'] as String),
+            const Spacer(),
+            ..._actionsFor(o),
+          ]),
         ]),
-      );
-}
-
-class _StatusChip extends StatelessWidget {
-  final String status;
-  const _StatusChip({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final color = status == 'placed'
-        ? LuxTheme.error
-        : (status == 'ready_for_pickup' || status == 'picked_up' || status == 'in_transit')
-            ? LuxTheme.success
-            : LuxTheme.gold;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.4))),
-      child: Text(status.replaceAll('_', ' ').toUpperCase(),
-          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+      ),
     );
   }
 }

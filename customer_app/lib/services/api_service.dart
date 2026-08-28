@@ -16,6 +16,13 @@ class ApiService {
     return jsonDecode(res.body) as List<dynamic>;
   }
 
+  /// Live menu managed by the shop (available items only).
+  static Future<List<dynamic>> fetchMenu(dynamic shopId) async {
+    final res = await http.get(_u('/shops/$shopId/menu'));
+    if (res.statusCode != 200) throw Exception('Failed to load menu (${res.statusCode})');
+    return jsonDecode(res.body) as List<dynamic>;
+  }
+
   static Future<Map<String, dynamic>> placeOrder({
     required int customerId,
     required dynamic shopId,
