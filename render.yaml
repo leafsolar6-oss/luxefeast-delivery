@@ -1,0 +1,19 @@
+# Render Blueprint — deploy the LuxFeast backend with one click.
+# Render dashboard → New → Blueprint → select this repo → Apply.
+# Then set DATABASE_URL (your Neon connection string) when prompted.
+services:
+  - type: web
+    name: luxefeast-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install --omit=dev
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false        # paste your Neon connection string in the dashboard
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_VERSION
+        value: "20"
