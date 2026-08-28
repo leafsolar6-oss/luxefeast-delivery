@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
 import '../services/socket_service.dart';
+import '../services/session.dart';
+import '../main.dart';
 import 'order_tracking_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -13,7 +15,6 @@ class CustomerHomeScreen extends StatefulWidget {
 }
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
-  static const int customerId = 1; // Amara Okonkwo (demo login)
   static const String deliveryAddress = '4 Fola Osibo Rd, Lekki Phase 1, Lagos';
 
   List<Map<String, dynamic>> shops = [];
@@ -45,7 +46,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   @override
   void initState() {
     super.initState();
-    SocketService.connect(customerId: customerId);
+    SocketService.connect(customerId: Session.userId);
     _loadShops();
   }
 
@@ -74,7 +75,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       final items = signatureMenu[shop['name']] ??
           [{'name': 'Chef Special', 'quantity': 1, 'price': 4000}];
       final order = await ApiService.placeOrder(
-        customerId: customerId,
+        customerId: Session.userId,
         shopId: shop['id'],
         items: items,
         deliveryAddress: deliveryAddress,
@@ -110,6 +111,18 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                 expandedHeight: 160,
                 floating: true,
                 backgroundColor: LuxTheme.deepBlack,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: LuxTheme.textSecondary),
+                    onPressed: () async {
+                      await Session.clear();
+                      if (context.mounted) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const AuthGate()), (r) => false);
+                      }
+                    },
+                  ),
+                ],
                 flexibleSpace: FlexibleSpaceBar(
                   background: Container(
                     decoration: const BoxDecoration(
@@ -130,7 +143,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                                   fontWeight: FontWeight.w700,
                                   color: LuxTheme.gold)),
                           const SizedBox(height: 4),
-                          Text('Premium Dining • Real-Time Tracking',
+                          Text('Welcome back, ${Session.name.split(' ').first} ✨',
                               style: GoogleFonts.inter(
                                   fontSize: 13, color: LuxTheme.textSecondary)),
                         ],

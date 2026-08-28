@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/socket_service.dart';
 import '../services/api_service.dart';
+import '../services/session.dart';
+import '../main.dart';
 
 /// Live shop dashboard — real orders from the LuxFeast backend with
 /// real-time alerts for every lifecycle event that concerns the shop.
@@ -14,7 +16,7 @@ class ShopDashboardScreen extends StatefulWidget {
 }
 
 class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
-  static const int shopId = 1; // Mama Nkem Amala Palace (demo login)
+  int get shopId => Session.entityId > 0 ? Session.entityId : 1;
 
   List<Map<String, dynamic>> orders = [];
   bool loading = true;
@@ -98,7 +100,7 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
     return Scaffold(
       backgroundColor: LuxTheme.deepBlack,
       appBar: AppBar(
-        title: Text('Mama Nkem Amala Palace',
+        title: Text(Session.name.isNotEmpty ? Session.name : 'My Restaurant',
             style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700)),
         actions: [
           Container(
@@ -113,6 +115,16 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
                   style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.bold, color: LuxTheme.success)),
             ]),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: LuxTheme.textSecondary),
+            onPressed: () async {
+              await Session.clear();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthGate()), (r) => false);
+              }
+            },
           ),
         ],
       ),

@@ -1,7 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
+import '../services/session.dart';
+import '../main.dart';
 import '../services/socket_service.dart';
 
 /// Live rider dashboard — dispatch offers, the atomic claim race,
@@ -14,7 +18,7 @@ class RiderDashboardScreen extends StatefulWidget {
 }
 
 class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
-  static const int riderId = 1; // Daniel Okoro (demo login)
+  int get riderId => Session.entityId > 0 ? Session.entityId : 1;
 
   int tab = 0;
   List<Map<String, dynamic>> offers = [];
@@ -22,6 +26,8 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
   Map<String, dynamic>? earnings;
   bool loading = true;
   String? error;
+  StreamSubscription<Position>? _gpsSub;
+  bool _gpsOn = false;
 
   @override
   void initState() {
@@ -68,6 +74,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
         loading = false;
         error = null;
       });
+      _syncGpsStream();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -75,6 +82,47 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
         error = e.toString();
       });
     }
+  }
+
+  /// Stream real GPS to the customer's live map while a delivery is active.
+  Future<void> _syncGpsStream() async {
+    final inDelivery = active.any((o) =>
+        ['picked_up', 'in_transit', 'arrived', 'ready_for_pickup', 'accepted', 'preparing']
+            .contains(o['status']));
+    if (!inDelivery) {
+      await _gpsSub?.cancel();
+      _gpsSub = null;
+      if (_gpsOn && mounted) setState(() => _gpsOn = false);
+      return;
+    }
+    if (_gpsSub != null) return; // already streaming
+
+    var permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      _toast('📍 Enable location so customers can track you live');
+      return;
+    }
+
+    _gpsSub = Geolocator.getPositionStream(
+      locationSettings:
+          const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 15),
+    ).listen((pos) {
+      for (final o in active) {
+        SocketService.sendLocation(
+            orderId: o['id'], riderId: riderId, lat: pos.latitude, lng: pos.longitude);
+      }
+    });
+    if (mounted) setState(() => _gpsOn = true);
+  }
+
+  @override
+  void dispose() {
+    _gpsSub?.cancel();
+    super.dispose();
   }
 
   void _toast(String msg) {
@@ -113,10 +161,20 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
             child: Row(children: [
               const Icon(Icons.circle, color: LuxTheme.success, size: 10),
               const SizedBox(width: 6),
-              Text('ONLINE',
+              Text(_gpsOn ? 'GPS LIVE' : 'ONLINE',
                   style: GoogleFonts.inter(
                       fontSize: 10, fontWeight: FontWeight.bold, color: LuxTheme.success)),
             ]),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: LuxTheme.textSecondary),
+            onPressed: () async {
+              await Session.clear();
+              if (context.mounted) {
+                Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const AuthGate()), (r) => false);
+              }
+            },
           ),
         ],
       ),
@@ -157,7 +215,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
         const SizedBox(width: 16),
         Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Daniel Okoro',
+          Text(Session.name.isNotEmpty ? Session.name : 'Rider',
               style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700, fontSize: 16, color: LuxTheme.textPrimary)),
           Text('Motorcycle • Lagos',

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'theme/app_theme.dart';
 import 'screens/shop_dashboard_screen.dart';
+import 'screens/auth_screen.dart';
+import 'services/session.dart';
+import 'services/auth_api.dart';
 
 void main() => runApp(const LuxFeastShopApp());
 
@@ -15,7 +18,57 @@ class LuxFeastShopApp extends StatelessWidget {
       theme: LuxTheme.dark,
       darkTheme: LuxTheme.dark,
       themeMode: ThemeMode.dark,
-      home: const ShopDashboardScreen(),
+      home: const AuthGate(),
     );
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool checking = true;
+  bool authed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _restore();
+  }
+
+  Future<void> _restore() async {
+    await Session.load();
+    if (Session.isLoggedIn) {
+      final fresh = await AuthApi.me(Session.token!);
+      if (fresh != null) {
+        await Session.save(Session.token!, fresh);
+        setState(() { authed = true; checking = false; });
+        return;
+      }
+      await Session.clear();
+    }
+    setState(() => checking = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (checking) {
+      return const Scaffold(
+        backgroundColor: LuxTheme.deepBlack,
+        body: Center(child: CircularProgressIndicator(color: LuxTheme.gold)),
+      );
+    }
+    if (!authed) {
+      return AuthScreen(
+        role: 'shop',
+        title: 'Restaurant Partner Dashboard',
+        onAuthed: () => setState(() => authed = true),
+      );
+    }
+    return const ShopDashboardScreen();
   }
 }

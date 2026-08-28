@@ -26,6 +26,8 @@
  *   order:cancelled     → shop, rider (if assigned), order
  */
 
+const { query } = require('../config/db');
+
 let io = null;
 
 function init(ioInstance) {
@@ -44,8 +46,12 @@ function init(ioInstance) {
     socket.on('leave-order', (orderId) => socket.leave(`order:${orderId}`));
 
     // Rider live GPS → everyone watching that order (customer tracking map).
+    // Also persisted so the map has a position even after app restarts.
     socket.on('rider:location', ({ orderId, riderId, lat, lng }) => {
       if (!orderId) return;
+      if (riderId && typeof lat === 'number' && typeof lng === 'number') {
+        query(`UPDATE riders SET lat = $1, lng = $2 WHERE id = $3`, [lat, lng, riderId]).catch(() => {});
+      }
       io.to(`order:${orderId}`).emit('rider:location', {
         orderId, riderId, lat, lng, timestamp: new Date().toISOString(),
       });

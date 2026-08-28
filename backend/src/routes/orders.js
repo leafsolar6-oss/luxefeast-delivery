@@ -16,8 +16,10 @@ async function loadOrder(id) {
   const { rows } = await query(
     `SELECT o.*,
             s.name AS shop_name, s.address AS shop_address, s.phone AS shop_phone,
+            s.lat AS shop_lat, s.lng AS shop_lng,
             u.name AS customer_name, u.phone AS customer_phone,
-            r.name AS rider_name, r.phone AS rider_phone, r.vehicle_type AS rider_vehicle, r.rating AS rider_rating
+            r.name AS rider_name, r.phone AS rider_phone, r.vehicle_type AS rider_vehicle, r.rating AS rider_rating,
+            r.lat AS rider_lat, r.lng AS rider_lng
        FROM orders o
        JOIN shops s ON s.id = o.shop_id
        JOIN users u ON u.id = o.customer_id
@@ -131,7 +133,7 @@ router.get('/:id', async (req, res) => {
 // Place order → alerts the shop instantly.
 router.post('/', async (req, res) => {
   try {
-    const { customerId, shopId, items, deliveryAddress, paymentGateway = 'paystack' } = req.body;
+    const { customerId, shopId, items, deliveryAddress, paymentGateway = 'paystack', dropoffLat, dropoffLng } = req.body;
     if (!customerId || !shopId || !Array.isArray(items) || items.length === 0 || !deliveryAddress) {
       return res.status(400).json({ message: 'customerId, shopId, items[], deliveryAddress are required' });
     }
@@ -141,9 +143,10 @@ router.post('/', async (req, res) => {
     const code = 'LF-' + Date.now().toString().slice(-6);
 
     const { rows } = await query(
-      `INSERT INTO orders (code, customer_id, shop_id, items, subtotal, delivery_fee, service_fee, total, payment_gateway, delivery_address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
-      [code, customerId, shopId, JSON.stringify(items), subtotal, deliveryFee, serviceFee, total, paymentGateway, deliveryAddress]
+      `INSERT INTO orders (code, customer_id, shop_id, items, subtotal, delivery_fee, service_fee, total, payment_gateway, delivery_address, dropoff_lat, dropoff_lng)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
+      [code, customerId, shopId, JSON.stringify(items), subtotal, deliveryFee, serviceFee, total, paymentGateway, deliveryAddress,
+       dropoffLat ?? 6.4531, dropoffLng ?? 3.4470] // default: Lekki Phase 1
     );
     const order = await loadOrder(rows[0].id);
     await logEvent(order.id, 'customer', 'place', null, 'placed', `Order ${code} placed — payment authorized via ${paymentGateway}`);
