@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "123456789012",
-    "project_id": "nature-fete-placeholder",
-    "storage_bucket": "nature-fete-placeholder.appspot.com"
+    "project_number": "533494553056",
+    "project_id": "nature-fete",
+    "storage_bucket": "nature-fete.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:123456789012:android:0000000000000000000000",
+        "mobilesdk_app_id": "1:533494553056:android:f0c4ca9711826ace1b7385",
         "android_client_info": {
           "package_name": "com.luxefeast.luxefeast_rider"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA0000000000000000000000000000000000"
+          "current_key": "AIzaSyBw8KcPfwLPq7Uxjvz1ZlMFpuek-AlC0pI"
         }
       ],
       "services": {
