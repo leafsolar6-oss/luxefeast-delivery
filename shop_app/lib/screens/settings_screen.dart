@@ -130,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: EdgeInsets.all(60),
                   child: Center(child: CircularProgressIndicator(color: LuxTheme.gold)))
             else if (error != null)
-              ErrorCard('Cannot reach LuxFeast servers.\nPull down to retry.')
+              ErrorCard('Cannot reach Nature Fete servers.\nPull down to retry.')
             else ...[
               // ---- availability ----
               Container(

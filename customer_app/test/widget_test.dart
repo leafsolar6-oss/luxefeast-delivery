@@ -24,6 +24,6 @@ void main() {
     // Guest lands on the restaurant list, never on the auth screen.
     expect(find.byType(CustomerHomeScreen), findsOneWidget);
     expect(find.byType(AuthScreen), findsNothing);
-    expect(find.text('Featured Restaurants'), findsOneWidget);
+    expect(find.text('Fresh From Our Kitchen'), findsOneWidget);
   });
 }

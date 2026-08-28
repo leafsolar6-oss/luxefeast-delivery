@@ -245,7 +245,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                 color: LuxTheme.deepBlack,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: LuxTheme.gold.withOpacity(0.4))),
-            child: Text(order?['shop_name'] ?? 'LuxFeast',
+            child: Text(order?['shop_name'] ?? 'Nature Fete',
                 style: const TextStyle(
                     color: LuxTheme.gold, fontWeight: FontWeight.w700, fontSize: 11)),
           ),

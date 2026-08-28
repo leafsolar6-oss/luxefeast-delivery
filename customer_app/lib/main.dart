@@ -15,11 +15,11 @@ class LuxFeastApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LuxFeast — Customer',
+      title: 'Nature Fete — Customer',
       debugShowCheckedModeBanner: false,
-      theme: LuxTheme.dark,
-      darkTheme: LuxTheme.dark,
-      themeMode: ThemeMode.dark,
+      theme: LuxTheme.theme,
+      darkTheme: LuxTheme.theme,
+      themeMode: ThemeMode.light,
       home: const AppGate(),
     );
   }

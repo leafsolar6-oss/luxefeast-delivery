@@ -13,11 +13,11 @@ class LuxFeastRiderApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'LuxFeast — Rider',
+      title: 'Nature Fete — Rider',
       debugShowCheckedModeBanner: false,
-      theme: LuxTheme.dark,
-      darkTheme: LuxTheme.dark,
-      themeMode: ThemeMode.dark,
+      theme: LuxTheme.theme,
+      darkTheme: LuxTheme.theme,
+      themeMode: ThemeMode.light,
       home: const AuthGate(),
     );
   }

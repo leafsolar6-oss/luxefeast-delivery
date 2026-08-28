@@ -120,7 +120,7 @@ class _AuthScreenState extends State<AuthScreen> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(28),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text('LuxFeast',
+              Text('Nature Fete',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.playfairDisplay(
                       fontSize: 36, fontWeight: FontWeight.w700, color: LuxTheme.gold)),

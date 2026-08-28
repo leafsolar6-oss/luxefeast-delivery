@@ -221,7 +221,7 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen> {
                 child: Center(child: CircularProgressIndicator(color: LuxTheme.gold)),
               )
             else if (error != null)
-              ErrorCard('Cannot reach LuxFeast servers.\nPull down to retry.')
+              ErrorCard('Cannot reach Nature Fete servers.\nPull down to retry.')
             else if (orders.isEmpty)
               _buildEmpty()
             else

@@ -150,7 +150,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     return Scaffold(
       backgroundColor: LuxTheme.deepBlack,
       appBar: AppBar(
-        title: Text('LuxFeast Rider',
+        title: Text('Nature Fete Rider',
             style: GoogleFonts.playfairDisplay(fontSize: 20, fontWeight: FontWeight.w700)),
         actions: [
           Container(
@@ -480,7 +480,7 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
         child: Column(children: [
           const Icon(Icons.wifi_off_rounded, color: LuxTheme.error, size: 32),
           const SizedBox(height: 10),
-          Text('Cannot reach LuxFeast servers.\nPull down to retry (first load can take a minute).',
+          Text('Cannot reach Nature Fete servers.\nPull down to retry (first load can take a minute).',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(color: LuxTheme.textSecondary, fontSize: 12)),
         ]),

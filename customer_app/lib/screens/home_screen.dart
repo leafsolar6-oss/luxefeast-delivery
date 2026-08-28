@@ -22,7 +22,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   String? error;
 
   static const Map<String, String> shopImages = {
-    'Mama Nkem Amala Palace': 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=600&q=80',
+    'Nature Fete': 'https://images.unsplash.com/photo-1546173159-315724a31696?w=600&q=80',
     'Jollof Republic Lagos': 'https://images.unsplash.com/photo-1511690656952-34342bb7c2f2?w=600&q=80',
     'Suya Palace Abuja': 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=600&q=80',
   };
@@ -165,7 +165,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('LuxFeast',
+                          Text('Nature Fete',
                               style: GoogleFonts.playfairDisplay(
                                   fontSize: 28,
                                   fontWeight: FontWeight.w700,
@@ -188,7 +188,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 sliver: SliverToBoxAdapter(
-                  child: Text('Featured Restaurants',
+                  child: Text('Fresh From Our Kitchen',
                       style: GoogleFonts.playfairDisplay(
                           fontSize: 22,
                           fontWeight: FontWeight.w600,
@@ -215,7 +215,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                         const Icon(Icons.wifi_off_rounded, color: LuxTheme.error, size: 36),
                         const SizedBox(height: 12),
                         Text(
-                            'Cannot reach LuxFeast servers.\nPull down to retry (first load can take a minute).',
+                            'Cannot reach Nature Fete servers.\nPull down to retry (first load can take a minute).',
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                                 color: LuxTheme.textSecondary, fontSize: 13)),

@@ -30,8 +30,46 @@ async function migrate() {
     CREATE INDEX IF NOT EXISTS idx_verif_user ON verification_codes (user_id, channel, consumed);
   `);
 
+  // v3.3 — Nature Fete rebrand (runs at most once: the guard is the old name).
+  const rebrand = await query(`
+    UPDATE shops SET
+        name = 'Nature Fete',
+        email = 'hello@naturefete.ng',
+        cuisines = '{Parfaits,"Fruit Juices",Smoothies,"Healthy Bowls"}',
+        avg_prep_minutes = 15,
+        rating = 4.9
+      WHERE name = 'Mama Nkem Amala Palace'
+      RETURNING id
+  `);
+  if (rebrand.rows[0]) {
+    const sid = rebrand.rows[0].id;
+    await query(`DELETE FROM menu_items WHERE shop_id = $1`, [sid]);
+    await query(
+      `INSERT INTO menu_items (shop_id, name, description, price, category, sort_order) VALUES
+        ($1, 'Berry Granola Parfait', 'Greek yogurt, granola, strawberries & blueberries', 3500, 'Parfaits', 1),
+        ($1, 'Tropical Mango Parfait', 'Mango, banana, coconut flakes & toasted oats', 3200, 'Parfaits', 2),
+        ($1, 'Peanut Butter Protein Parfait', 'High-protein yogurt, honey & peanut crunch', 3800, 'Parfaits', 3),
+        ($1, 'Fresh Orange Juice (50cl)', 'Hand-pressed Valencia oranges', 1500, 'Juices', 4),
+        ($1, 'Watermelon Cooler', 'Chilled watermelon, mint & lime', 1800, 'Juices', 5),
+        ($1, 'Pineapple Ginger Zinger', 'Pineapple, fresh ginger & a pinch of cayenne', 2000, 'Juices', 6),
+        ($1, 'Green Detox Smoothie', 'Spinach, apple, cucumber, ginger & lemon', 2800, 'Smoothies', 7),
+        ($1, 'Banana Peanut Smoothie', 'Banana, peanut butter, milk & dates', 2600, 'Smoothies', 8),
+        ($1, 'Acai Breakfast Bowl', 'Acai, granola, banana, berries & honey', 4500, 'Bowls', 9),
+        ($1, 'Seasonal Fruit Salad Bowl', 'Pawpaw, pineapple, watermelon & grapes', 3000, 'Bowls', 10),
+        ($1, 'Avocado Toast & Eggs', 'Sourdough, smashed avocado, chilli flakes', 3500, 'Light Bites', 11),
+        ($1, 'Coconut Water (1L)', 'Naturally sweet, straight from the nut', 1200, 'Drinks', 12),
+        ($1, 'Date & Nut Energy Bites', 'Dates, cashews, coconut — no refined sugar', 1500, 'Snacks', 13)`,
+      [sid]
+    );
+    await query(
+      `UPDATE users SET name = 'Nature Fete' WHERE email = 'shop@luxefeast.com' AND name = 'Mama Nkem'`
+    );
+    console.log('Rebranded shop to Nature Fete (menu swapped: 13 fresh items)');
+  }
+
+
   // Seed shop coordinates (Lagos / Abuja)
-  await query(`UPDATE shops SET lat = 6.4478, lng = 3.4723 WHERE name = 'Mama Nkem Amala Palace' AND lat IS NULL`);
+  await query(`UPDATE shops SET lat = 6.4478, lng = 3.4723 WHERE name = 'Nature Fete' AND lat IS NULL`);
   await query(`UPDATE shops SET lat = 6.4433, lng = 3.4519 WHERE name = 'Jollof Republic Lagos'  AND lat IS NULL`);
   await query(`UPDATE shops SET lat = 9.0765, lng = 7.4713 WHERE name = 'Suya Palace Abuja'      AND lat IS NULL`);
 }
@@ -41,7 +79,7 @@ async function seed() {
   if (rows[0].n === 0) {
     await query(
       `INSERT INTO shops (name, email, phone, address, city, cuisines, rating, avg_prep_minutes, lat, lng) VALUES
-       ('Mama Nkem Amala Palace', 'orders@mamankem.ng',   '+2348012345678', 'Plot 17, Lekki Phase 1, Lagos', 'Lagos', '{Amala,"Ewedu & Gbegiri","Swallow & Soup"}', 4.8, 25, 6.4478, 3.4723),
+       ('Nature Fete', 'hello@naturefete.ng', '+2348012345678', 'Plot 17, Lekki Phase 1, Lagos', 'Lagos', '{Parfaits,"Fruit Juices",Smoothies,"Healthy Bowls"}', 4.9, 15, 6.4478, 3.4723),
        ('Jollof Republic Lagos',  'hello@jollofrepublic.ng','+2348023456789','12 Admiralty Way, Lekki, Lagos','Lagos', '{"Jollof Rice","Fried Rice","Nigerian Street Food"}', 4.7, 18, 6.4433, 3.4519),
        ('Suya Palace Abuja',      'crew@suyapalace.ng',    '+2348034567890', '3 Aminu Kano Crescent, Wuse 2, Abuja', 'Abuja', '{Suya,Grills,"Pepper Soup"}', 4.9, 15, 9.0765, 7.4713)`
     );
@@ -64,11 +102,19 @@ async function seed() {
       `INSERT INTO menu_items (shop_id, name, description, price, category, sort_order)
        SELECT s.id, v.name, v.description, v.price, v.category, v.sort_order
        FROM (VALUES
-        (1, 'Amala + Ewedu & Gbegiri', 'Classic trio, served piping hot', 3500, 'Mains', 1),
-        (1, 'Assorted Goat Meat',      'Slow-stewed, peppered to order',   2000, 'Proteins', 2),
-        (1, 'Pounded Yam & Egusi',     'Melon seed soup with ponmo',       3800, 'Mains', 3),
-        (1, 'Catfish Pepper Soup',     'Point-and-kill, spicy broth',      4500, 'Soups', 4),
-        (1, 'Chapman (1L)',            'The classic Nigerian mocktail',    1500, 'Drinks', 5),
+        (1, 'Berry Granola Parfait',      'Greek yogurt, granola, strawberries & blueberries',   3500, 'Parfaits', 1),
+        (1, 'Tropical Mango Parfait',     'Mango, banana, coconut flakes & toasted oats',        3200, 'Parfaits', 2),
+        (1, 'Peanut Butter Protein Parfait', 'High-protein yogurt, honey & peanut crunch',       3800, 'Parfaits', 3),
+        (1, 'Fresh Orange Juice (50cl)',  'Hand-pressed Valencia oranges',                       1500, 'Juices', 4),
+        (1, 'Watermelon Cooler',          'Chilled watermelon, mint & lime',                     1800, 'Juices', 5),
+        (1, 'Pineapple Ginger Zinger',    'Pineapple, fresh ginger & a pinch of cayenne',        2000, 'Juices', 6),
+        (1, 'Green Detox Smoothie',       'Spinach, apple, cucumber, ginger & lemon',            2800, 'Smoothies', 7),
+        (1, 'Banana Peanut Smoothie',     'Banana, peanut butter, milk & dates',                 2600, 'Smoothies', 8),
+        (1, 'Acai Breakfast Bowl',        'Acai, granola, banana, berries & honey',              4500, 'Bowls', 9),
+        (1, 'Seasonal Fruit Salad Bowl',  'Pawpaw, pineapple, watermelon & grapes',              3000, 'Bowls', 10),
+        (1, 'Avocado Toast & Eggs',       'Sourdough, smashed avocado, chilli flakes',           3500, 'Light Bites', 11),
+        (1, 'Coconut Water (1L)',         'Naturally sweet, straight from the nut',              1200, 'Drinks', 12),
+        (1, 'Date & Nut Energy Bites',    'Dates, cashews, coconut — no refined sugar',          1500, 'Snacks', 13),
         (2, 'Party Jollof + Chicken',  'Smoky wood-fire party rice',       4200, 'Mains', 1),
         (2, 'Dodo (Fried Plantain)',   'Caramelised, crispy edges',        1200, 'Sides', 2),
         (2, 'Fried Rice & Beef',       'Stir-fried with liver & gizzard',  4500, 'Mains', 3),
@@ -81,7 +127,7 @@ async function seed() {
         (3, 'Kunu Aya (50cl)',         'Tiger nut milk, lightly sweet',     800, 'Drinks', 5)
       ) AS v(shop_no, name, description, price, category, sort_order)
       JOIN shops s ON (
-        (v.shop_no = 1 AND s.name = 'Mama Nkem Amala Palace') OR
+        (v.shop_no = 1 AND s.name = 'Nature Fete') OR
         (v.shop_no = 2 AND s.name = 'Jollof Republic Lagos') OR
         (v.shop_no = 3 AND s.name = 'Suya Palace Abuja')
       )`
@@ -94,7 +140,7 @@ async function seed() {
   const hash = await bcrypt.hash('demo123', 10);
   const demos = [
     { name: 'Amara Okonkwo', email: 'customer@luxefeast.com', phone: '+2348011112222', role: 'customer', entitySql: null },
-    { name: 'Mama Nkem',     email: 'shop@luxefeast.com',     phone: '+2348012345678', role: 'shop',   entitySql: `SELECT id FROM shops WHERE name = 'Mama Nkem Amala Palace'` },
+    { name: 'Nature Fete',   email: 'shop@luxefeast.com',     phone: '+2348012345678', role: 'shop',   entitySql: `SELECT id FROM shops WHERE name = 'Nature Fete'` },
     { name: 'Daniel Okoro',  email: 'rider@luxefeast.com',    phone: '+2348033334444', role: 'rider',  entitySql: `SELECT id FROM riders WHERE name = 'Daniel Okoro'` },
   ];
   for (const d of demos) {
