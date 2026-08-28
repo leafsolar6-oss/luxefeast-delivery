@@ -75,4 +75,9 @@ async function sendToUsers(userIds, title, body, data = {}) {
   }
 }
 
-module.exports = { sendToUsers };
+function ready() {
+  init();
+  return messaging !== null;
+}
+
+module.exports = { sendToUsers, ready };

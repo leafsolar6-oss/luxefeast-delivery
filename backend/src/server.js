@@ -12,6 +12,7 @@ const morgan = require('morgan');
 
 const { migrateAndSeed } = require('./db/bootstrap');
 const realtime = require('./realtime/events');
+const push = require('./services/push');
 
 const app = express();
 const server = http.createServer(app);
@@ -28,7 +29,13 @@ app.use('/api/shops', require('./routes/shops'));
 app.use('/api/riders', require('./routes/riders'));
 
 app.get('/api/health', (_req, res) =>
-  res.json({ status: 'healthy', version: '2.0.0', service: 'LuxFeast', database: 'postgres (Neon-ready)' })
+  res.json({
+    status: 'healthy',
+    version: '2.0.0',
+    service: 'Nature Fete',
+    database: 'postgres (Neon)',
+    push: push.ready() ? 'firebase' : 'disabled',
+  })
 );
 
 // JSON error handler — async rejections land here instead of killing the process.
