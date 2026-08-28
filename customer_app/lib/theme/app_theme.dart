@@ -45,7 +45,7 @@ class LuxTheme {
         iconTheme: IconThemeData(color: gold),
         titleTextStyle: TextStyle(fontFamily: 'PlayfairDisplay', fontSize: 20, fontWeight: FontWeight.w700, color: textPrimary),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: surfaceElevated,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: gold.withOpacity(0.1), width: 1)),
         elevation: 0,
