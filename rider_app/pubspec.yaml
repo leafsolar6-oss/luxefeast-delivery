@@ -1,7 +1,7 @@
 name: luxefeast_rider
 description: Premium rider delivery app with notifications, real-time updates, and payment dashboard.
 publish_to: 'none'
-version: 1.0.0+1
+version: 4.0.0+4
 
 environment:
   sdk: '>=3.4.0 <4.0.0'
