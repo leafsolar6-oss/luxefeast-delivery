@@ -1,0 +1,21 @@
+# Caddy — automatic HTTPS (Let's Encrypt) + reverse proxy.
+# {$API_DOMAIN} comes from the .env file. WebSockets (Socket.IO) pass
+# through natively — no extra config needed.
+
+{$API_DOMAIN} {
+	encode gzip
+
+	# Allow the Flutter apps' CORS requests from any origin
+	header Access-Control-Allow-Origin *
+	header Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+	header Access-Control-Allow-Headers "Content-Type, Authorization"
+
+	reverse_proxy api:5000 {
+		# Long-lived WebSocket connections (live order tracking)
+		flush_interval -1
+	}
+
+	log {
+		output stdout
+	}
+}
