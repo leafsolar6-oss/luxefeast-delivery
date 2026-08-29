@@ -1,0 +1,27 @@
+name: Keep API awake
+
+# Render's free tier sleeps after 15 minutes without inbound traffic
+# (30-60s cold start on wake). This workflow pings the health endpoint
+# every 10 minutes from GitHub's infrastructure — free forever on a
+# public repo — so the API never sleeps and the apps always open fast.
+#
+# Note: GitHub disables scheduled workflows after 60 days of repo
+# inactivity — any push to the repo resets that clock.
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # every 10 minutes
+  workflow_dispatch: {} # allow manual runs from the Actions tab
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Nature Fete API health
+        run: |
+          echo "Pinging at $(date -u +%H:%M:%S) UTC…"
+          code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 120 https://luxefeast-api.onrender.com/api/health)
+          echo "Health check: HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::API returned $code (it may be waking up — this run woke it)"
+          fi
