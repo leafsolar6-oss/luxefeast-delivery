@@ -28,7 +28,10 @@ class PushService {
 
   static const String _channelId = 'orders';
 
-  static String get _baseUrl =>
+  // MUST be const — non-const String.fromEnvironment ignores --dart-define
+  // in AOT builds and falls back to the emulator default (the bug that
+  // silently killed push registration on real phones).
+  static const String _baseUrl =
       String.fromEnvironment('API_BASE_URL', defaultValue: 'http://10.0.2.2:5000');
 
   static void _announce(String title, String message, {bool error = false}) {
