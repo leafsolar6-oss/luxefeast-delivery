@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../services/api_service.dart';
@@ -51,7 +53,41 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       SocketService.connect(customerId: Session.userId);
       SocketService.attachOrderNotifications();
     }
-    _load();
+    _loadFromCache(); // instant — screen is never blank while servers wake
+    _load();          // fresh data arrives silently in the background
+  }
+
+  Future<void> _loadFromCache() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString('lf_home_cache');
+      if (raw == null || shops.isNotEmpty) return;
+      final j = jsonDecode(raw) as Map<String, dynamic>;
+      final cachedShops =
+          ((j['shops'] as List<dynamic>?) ?? []).cast<Map<String, dynamic>>();
+      final cachedMenu =
+          ((j['menu'] as List<dynamic>?) ?? []).cast<Map<String, dynamic>>();
+      if (cachedShops.isEmpty) return;
+      if (!mounted) return;
+      setState(() {
+        shops = cachedShops;
+        menu = cachedMenu;
+        popular = List.from(cachedMenu);
+        loading = false;
+        error = null;
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _saveCache() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      await p.setString('lf_home_cache', jsonEncode({
+        'shops': shops,
+        'menu': menu,
+        'savedAt': DateTime.now().toIso8601String(),
+      }));
+    } catch (_) {}
   }
 
   Future<void> _load() async {
@@ -78,6 +114,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         loading = false;
         error = null;
       });
+      _saveCache();
     } catch (e) {
       if (!mounted) return;
       setState(() { loading = false; error = e.toString(); });
@@ -126,7 +163,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               onRefresh: _load,
               child: loading
                   ? const Center(child: CircularProgressIndicator(color: LuxTheme.primary))
-                  : error != null
+                  : error != null && shops.isEmpty
                       ? ListView(children: [
                           const SizedBox(height: 120),
                           _errorCard(),

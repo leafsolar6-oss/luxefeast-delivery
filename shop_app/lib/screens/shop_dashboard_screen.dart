@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -56,6 +58,7 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _connectRealtime();
+    _loadFromCache(); // orders appear instantly, even while the server wakes
     _refresh();
     _loadShop();
     // Belt & braces: even if live sockets ever fail, the dashboard
@@ -225,6 +228,21 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen>
     } catch (_) {/* banner simply stays hidden */}
   }
 
+  Future<void> _loadFromCache() async {
+    try {
+      final p = await SharedPreferences.getInstance();
+      final raw = p.getString('lf_orders_cache_$shopId');
+      if (raw == null) return;
+      final cached =
+          (jsonDecode(raw) as List<dynamic>).cast<Map<String, dynamic>>();
+      if (cached.isEmpty || !mounted) return;
+      setState(() {
+        orders = cached;
+        loading = false;
+      });
+    } catch (_) {}
+  }
+
   Future<void> _refresh() async {
     try {
       final data = await ApiService.fetchOpenOrders(shopId);
@@ -234,6 +252,11 @@ class _ShopDashboardScreenState extends State<ShopDashboardScreen>
         loading = false;
         error = null;
       });
+      try {
+        final p = await SharedPreferences.getInstance();
+        await p.setString('lf_orders_cache_$shopId',
+            jsonEncode(orders.take(20).toList()));
+      } catch (_) {}
     } catch (e) {
       if (!mounted) return;
       setState(() { loading = false; error = e.toString(); });

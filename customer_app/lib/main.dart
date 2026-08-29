@@ -48,20 +48,25 @@ class _AppGateState extends State<AppGate> {
   }
 
   Future<void> _restore() async {
+    // Local loads only — instant. The first screen appears immediately;
+    // a waking server can never slow the app open again.
     await Future.wait([
       Session.load(),
       CartService.instance.load(), // cart survives restarts (guests included)
     ]);
+    if (mounted) setState(() => checking = false);
+
+    // Validate the session in the background — never blocks the UI.
     if (Session.isLoggedIn) {
       final fresh = await AuthApi.me(Session.token!);
       if (fresh != null) {
         await Session.save(Session.token!, fresh);
-        await PushService.init();
+        PushService.init();
       } else {
         await Session.clear(); // stale token → continue as guest
+        if (mounted) setState(() {});
       }
     }
-    if (mounted) setState(() => checking = false);
   }
 
   @override

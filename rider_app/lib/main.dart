@@ -44,18 +44,21 @@ class _AuthGateState extends State<AuthGate> {
   }
 
   Future<void> _restore() async {
-    await Session.load();
-    if (Session.isLoggedIn) {
+    await Session.load(); // local — instant
+    final hadSession = Session.isLoggedIn;
+    if (mounted) setState(() { authed = hadSession; checking = false; });
+
+    // Validate in the background — the dashboard is already on screen.
+    if (hadSession) {
       final fresh = await AuthApi.me(Session.token!);
       if (fresh != null) {
         await Session.save(Session.token!, fresh);
         PushService.init();
-        setState(() { authed = true; checking = false; });
-        return;
+      } else {
+        await Session.clear();
+        if (mounted) setState(() => authed = false);
       }
-      await Session.clear();
     }
-    setState(() => checking = false);
   }
 
   @override
